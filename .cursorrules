@@ -1,0 +1,15 @@
+# Rules for AI Agents in this Repository (Cursor)
+
+⚠️ This file is a pointer. Canonical rules live in AGENTS.md and ONBOARDING.md.
+
+Before any Edit / Write / Bash operation, you MUST read:
+
+1. ONBOARDING.md — 3-layer load strategy (Must-read / Boot ritual / On-demand)
+2. AGENTS.md — 11 global hard rules (Git pre-flight #13, irreversible-ops ban #11, AI-driven business must feature-log #9, archive immutability #10, etc.)
+3. CLAUDE.md — runtime SOP + Skill 速查 + mechanical checks index
+
+Before your first reply, MUST acknowledge:
+
+> 已阅读 ONBOARDING.md 和 AGENTS.md，遵守规则 #11 和 #13。
+
+Git hooks (pre-commit / commit-msg / post-commit) enforce these rules. Bypassing via `--no-verify` leaves audit trail in git log.

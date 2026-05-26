@@ -1,0 +1,17 @@
+# Rules for AI Agents in this Repository (Aider)
+
+⚠️ This file is a pointer. Canonical rules live in AGENTS.md and ONBOARDING.md.
+
+Aider users: also see CONVENTIONS.md (more detailed Aider-friendly entry).
+
+Before any Edit / Write / Bash operation, you MUST read:
+
+1. ONBOARDING.md — 3-layer load strategy
+2. AGENTS.md — 11 global hard rules (#11 irreversible-ops, #13 git pre-flight, etc.)
+3. CLAUDE.md — runtime SOP + skill catalog
+
+Before your first reply, MUST acknowledge:
+
+> 已阅读 ONBOARDING.md 和 AGENTS.md，遵守规则 #11 和 #13。
+
+Git hooks enforce rules. `--no-verify` leaves audit trail.

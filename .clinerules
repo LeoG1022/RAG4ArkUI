@@ -1,0 +1,15 @@
+# Rules for AI Agents in this Repository (Cline)
+
+⚠️ This file is a pointer. Canonical rules live in AGENTS.md and ONBOARDING.md.
+
+Before any Edit / Write / Bash operation, you MUST read:
+
+1. ONBOARDING.md — 3-layer load strategy
+2. AGENTS.md — 11 global hard rules
+3. CLAUDE.md — runtime SOP
+
+Before your first reply, MUST acknowledge:
+
+> 已阅读 ONBOARDING.md 和 AGENTS.md，遵守规则 #11 和 #13。
+
+Git hooks enforce rules. `--no-verify` leaves audit trail.
