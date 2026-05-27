@@ -30,3 +30,7 @@ tracing-subscriber = { workspace = true }
 default = []
 # 启用后 index/query 可选 --embedder onnx --model-path ...，转发 arkui-rag-embedding/onnx
 onnx = ["arkui-rag-embedding/onnx"]
+# 启用后 index/query 可选 --bm25 tantivy，转发 arkui-rag-storage/tantivy
+tantivy = ["arkui-rag-storage/tantivy"]
+# 一键开全（onnx + tantivy）
+full = ["onnx", "tantivy"]

@@ -13,12 +13,12 @@
 |---|---|---|---|
 | [`arkui-rag-core`](arkui-rag-core/) | 公共 trait + 类型 + Error | ✅ trait/类型完成 | §4.1 引擎层 / §9 图 3 |
 | [`arkui-rag-embedding`](arkui-rag-embedding/) | BGE-M3 ONNX 编码器 | ✅ Mock + §7.2 + **OnnxEmbedder async wrapper (Day 3)** | §6 / §7.2 |
-| [`arkui-rag-storage`](arkui-rag-storage/) | 存储后端 + InMemory 实现 | ✅ trait + InMemoryVectorStore/BM25 + JSON 持久化 | §4.2 决策 4 |
+| [`arkui-rag-storage`](arkui-rag-storage/) | 存储后端 + InMemory 实现 | ✅ trait + InMemoryVectorStore/BM25 + JSON 持久化 + **TantivyBM25Index (Day 4 · feature `tantivy`)** | §4.2 决策 4 |
 | [`arkui-rag-chunker`](arkui-rag-chunker/) | 切分（含 frontmatter） | ✅ MarkdownChunker（含 YAML frontmatter） | §2.3 / §4.2 决策 6 |
-| [`arkui-rag-retrieval`](arkui-rag-retrieval/) | HybridRetriever + RRF + Rerank | ✅ HybridRetriever 真活；Reranker 仍 stub | §1.4 / §2.4 |
+| [`arkui-rag-retrieval`](arkui-rag-retrieval/) | HybridRetriever + RRF + Rerank | ✅ HybridRetriever 真活；**Day 4 起 RRF 真正双路融合（向量 + Tantivy BM25）**；Reranker 仍 stub | §1.4 / §2.4 |
 | [`arkui-rag-indexer`](arkui-rag-indexer/) | 索引流水线编排（Day 2 新增） | ✅ index_directory 真活 + 单测 + 端到端集成测试 | §9 图 5 / §9 图 2 |
 | [`arkui-rag-server`](arkui-rag-server/) | HTTP + MCP + LSP 协议 | ⏳ 路由 stub（Week 4） | §4.2 决策 2 / §9 图 8 |
-| [`arkui-rag-cli`](arkui-rag-cli/) | `arkui-rag` 二进制入口 | ✅ index/query 含 **--embedder mock\|onnx**（Day 3）；serve stub | §5 / §9 图 8 |
+| [`arkui-rag-cli`](arkui-rag-cli/) | `arkui-rag` 二进制入口 | ✅ index/query 含 `--embedder mock\|onnx`（Day 3）+ **`--bm25 memory\|tantivy`（Day 4）**；serve stub | §5 / §9 图 8 |
 
 ## 构建
 
@@ -66,6 +66,16 @@ cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli --features onnx -- 
     index --source corpus --embedder onnx --model-path ~/.arkui-rag/models/bge-m3-onnx --model-id bge-m3
 cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli --features onnx -- \
     query --text "下拉刷新" --k 3 --embedder onnx --model-path ~/.arkui-rag/models/bge-m3-onnx
+
+# 6. 真实双路 hybrid（Day 4，需 tantivy feature；可叠加 onnx）
+cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli --features tantivy -- \
+    index --source corpus --bm25 tantivy
+cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli --features tantivy -- \
+    query --text "router pushUrl 怎么传参数" --k 3 --bm25 tantivy
+
+# 7. 一键全启（Day 3 + Day 4）
+cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli --features full -- \
+    index --source corpus --embedder onnx --model-path ~/.arkui-rag/models/bge-m3-onnx --bm25 tantivy
 ```
 
 模型获取见 [`arkui-rag-embedding/README.md`](arkui-rag-embedding/README.md#模型获取day-3-阶段手动--cli-提示)

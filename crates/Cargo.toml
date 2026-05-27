@@ -51,6 +51,9 @@ ndarray = "0.16"
 ort = { version = "2.0.0-rc.4", default-features = false, features = ["load-dynamic", "ndarray"] }
 tokenizers = { version = "0.20", default-features = false, features = ["onig"] }
 
+# BM25 倒排索引（storage crate 的 tantivy feature 用）
+tantivy = "0.22"
+
 # HTTP server（server crate 用）
 axum = "0.8"
 tower = "0.5"

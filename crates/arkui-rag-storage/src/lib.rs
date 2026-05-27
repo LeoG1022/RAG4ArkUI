@@ -2,10 +2,16 @@
 
 pub mod memory;
 
+#[cfg(feature = "tantivy")]
+pub mod tantivy_bm25;
+
 use arkui_rag_core::{Chunk, ChunkId, Hit, QueryFilters, Result};
 use async_trait::async_trait;
 
 pub use memory::{InMemoryBM25Index, InMemoryVectorStore, IndexSnapshot};
+
+#[cfg(feature = "tantivy")]
+pub use tantivy_bm25::TantivyBM25Index;
 
 /// 向量存储后端。LanceDB 适配是 `feature = "lancedb"` 的 Week 2 backlog；
 /// Day 2 内置 `InMemoryVectorStore` 让 Mock Demo 端到端跑通。

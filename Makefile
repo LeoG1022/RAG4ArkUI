@@ -5,7 +5,7 @@
 CARGO ?= cargo
 CRATES_DIR := crates
 
-.PHONY: help install-rust check check-onnx build build-onnx test fmt clippy clean corpus-init smoke
+.PHONY: help install-rust check check-onnx check-tantivy build build-onnx build-tantivy build-full test fmt clippy clean corpus-init smoke
 
 help:
 	@echo "RAG4ArkUI — 可用 target"
@@ -14,6 +14,9 @@ help:
 	@echo "  make check-onnx     cargo check -p arkui-rag-embedding --features onnx"
 	@echo "  make build          cargo build --workspace --release"
 	@echo "  make build-onnx     cargo build -p arkui-rag-cli --features onnx --release (Day 3)"
+	@echo "  make build-tantivy  cargo build -p arkui-rag-cli --features tantivy --release (Day 4)"
+	@echo "  make build-full     cargo build -p arkui-rag-cli --features full --release（onnx + tantivy）"
+	@echo "  make check-tantivy  cargo check -p arkui-rag-storage --features tantivy"
 	@echo "  make test           cargo test --workspace"
 	@echo "  make smoke          端到端冒烟：index + query 真实跑通（用 /tmp 临时 corpus）"
 	@echo "  make fmt            cargo fmt --all"
@@ -41,6 +44,15 @@ build: install-rust
 
 build-onnx: install-rust
 	cd $(CRATES_DIR) && $(CARGO) build -p arkui-rag-cli --features onnx --release
+
+build-tantivy: install-rust
+	cd $(CRATES_DIR) && $(CARGO) build -p arkui-rag-cli --features tantivy --release
+
+build-full: install-rust
+	cd $(CRATES_DIR) && $(CARGO) build -p arkui-rag-cli --features full --release
+
+check-tantivy: install-rust
+	cd $(CRATES_DIR) && $(CARGO) check -p arkui-rag-storage --features tantivy
 
 test: install-rust
 	cd $(CRATES_DIR) && $(CARGO) test --workspace

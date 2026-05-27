@@ -1,17 +1,19 @@
 //! arkui-rag 二进制入口。
 //!
 //! Day 3：`--embedder onnx --model-path <dir>` 启用真实 BGE-M3 推理（需 `--features onnx`）。
-//! 默认 `--embedder mock` 保持 Day 2 行为（无依赖 demo）。
-//! 索引产物校验 `embedder_model_id` 防止"用不同 embedder 查老索引"。
+//! Day 4：`--bm25 tantivy` 启用真实 BM25 倒排检索（需 `--features tantivy`），让 HybridRetriever
+//!         RRF 真正双路融合（向量 + BM25）。默认 `--bm25 memory` 走 Day 2 空 stub 行为。
+//! 索引产物校验 `embedder_model_id` 防止"用不同 embedder 查老索引"；BM25 索引目录与
+//! vector 索引 (`<index-path-dir>/bm25/`) 并列存放。
 
 use arkui_rag_chunker::MarkdownChunker;
 use arkui_rag_core::{Citation, Embedder, EnhancedQuery, Retriever};
 use arkui_rag_embedding::MockEmbedder;
 use arkui_rag_indexer::Indexer;
 use arkui_rag_retrieval::HybridRetriever;
-use arkui_rag_storage::{InMemoryBM25Index, InMemoryVectorStore};
+use arkui_rag_storage::{BM25Index, InMemoryBM25Index, InMemoryVectorStore};
 use clap::{Parser, Subcommand, ValueEnum};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
 
@@ -24,6 +26,14 @@ enum EmbedderKind {
     Mock,
     /// OnnxEmbedder：真实 BGE-M3 / Qwen3 推理，需 --features onnx + 本地模型
     Onnx,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum Bm25Kind {
+    /// 空 stub，HybridRetriever 退化为纯向量（Day 2 默认）
+    Memory,
+    /// Tantivy 真实 BM25 倒排检索（Day 4，需 --features tantivy）
+    Tantivy,
 }
 
 #[derive(Parser, Debug)]
@@ -67,6 +77,9 @@ enum Cmd {
         /// mock 模式下的向量维度（onnx 模式忽略，从模型读）
         #[arg(long, default_value_t = DEFAULT_MOCK_DIM)]
         dim: usize,
+        /// BM25 后端：memory（空 stub）/ tantivy（真实倒排检索，需 --features tantivy）
+        #[arg(long, value_enum, default_value_t = Bm25Kind::Memory)]
+        bm25: Bm25Kind,
     },
     /// 检索一次并打印 Top-K 命中
     Query {
@@ -82,6 +95,9 @@ enum Cmd {
         /// onnx embedder 需要的模型目录
         #[arg(long)]
         model_path: Option<PathBuf>,
+        /// BM25 后端：必须与建索引时一致
+        #[arg(long, value_enum, default_value_t = Bm25Kind::Memory)]
+        bm25: Bm25Kind,
     },
     /// Corpus 管理
     Corpus {
@@ -137,14 +153,27 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             model_path,
             model_id,
             dim,
-        } => cmd_index(&source, &index_path, embedder, model_path.as_deref(), &model_id, dim).await,
+            bm25,
+        } => {
+            cmd_index(
+                &source,
+                &index_path,
+                embedder,
+                model_path.as_deref(),
+                &model_id,
+                dim,
+                bm25,
+            )
+            .await
+        }
         Cmd::Query {
             text,
             k,
             index_path,
             embedder,
             model_path,
-        } => cmd_query(&text, k, &index_path, embedder, model_path.as_deref()).await,
+            bm25,
+        } => cmd_query(&text, k, &index_path, embedder, model_path.as_deref(), bm25).await,
         Cmd::Corpus { op } => corpus_op(op).await,
     }
 }
@@ -194,13 +223,48 @@ fn build_onnx(
     )
 }
 
+/// 推导 BM25 索引目录：与 index.json 同级的 bm25/ 子目录。
+fn bm25_dir_from(index_path: &Path) -> PathBuf {
+    index_path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join("bm25")
+}
+
+/// 构造 BM25 实例 + 报告 kind 名（写入索引元数据 / 防错配）。
+fn build_bm25(kind: Bm25Kind, index_path: &Path) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
+    match kind {
+        Bm25Kind::Memory => Ok((Arc::new(InMemoryBM25Index), "memory")),
+        Bm25Kind::Tantivy => build_tantivy(index_path),
+    }
+}
+
+#[cfg(feature = "tantivy")]
+fn build_tantivy(index_path: &Path) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
+    use arkui_rag_storage::TantivyBM25Index;
+    let dir = bm25_dir_from(index_path);
+    let bm = TantivyBM25Index::open(&dir)
+        .map_err(|e| anyhow::anyhow!("打开 Tantivy 索引目录 {} 失败: {}", dir.display(), e))?;
+    Ok((Arc::new(bm), "tantivy"))
+}
+
+#[cfg(not(feature = "tantivy"))]
+fn build_tantivy(_index_path: &Path) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
+    anyhow::bail!(
+        "本二进制未启用 tantivy feature。重新构建：\n\
+         \tcargo build -p arkui-rag-cli --features tantivy --release\n\
+         （或 --features full 启用 onnx + tantivy）"
+    )
+}
+
 async fn cmd_index(
-    source: &std::path::Path,
-    index_path: &std::path::Path,
+    source: &Path,
+    index_path: &Path,
     kind: EmbedderKind,
-    model_path: Option<&std::path::Path>,
+    model_path: Option<&Path>,
     model_id: &str,
     mock_dim: usize,
+    bm25_kind: Bm25Kind,
 ) -> anyhow::Result<()> {
     if !source.exists() {
         anyhow::bail!("源目录不存在：{}", source.display());
@@ -208,7 +272,7 @@ async fn cmd_index(
     let (embedder, model_id_used, dim) =
         build_embedder(kind, model_path, model_id, mock_dim).await?;
     let vector = Arc::new(InMemoryVectorStore::new(model_id_used.clone(), dim));
-    let bm25 = Arc::new(InMemoryBM25Index);
+    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
     let chunker = Arc::new(MarkdownChunker::new());
 
     let indexer = Indexer::new(chunker, embedder, vector.clone(), bm25);
@@ -218,20 +282,25 @@ async fn cmd_index(
     println!("✅ 索引完成");
     println!("   embedder    : {}", stats.embedder_model_id);
     println!("   dim         : {}", dim);
+    println!("   bm25        : {}", bm25_name);
     println!("   files       : {}", stats.files);
     println!("   chunks      : {}", stats.chunks);
     println!("   skipped     : {}", stats.skipped);
     println!("   elapsed_ms  : {}", stats.elapsed_ms);
     println!("   saved to    : {}", index_path.display());
+    if matches!(bm25_kind, Bm25Kind::Tantivy) {
+        println!("   bm25 index  : {}", bm25_dir_from(index_path).display());
+    }
     Ok(())
 }
 
 async fn cmd_query(
     text: &str,
     k: usize,
-    index_path: &std::path::Path,
+    index_path: &Path,
     kind: EmbedderKind,
-    model_path: Option<&std::path::Path>,
+    model_path: Option<&Path>,
+    bm25_kind: Bm25Kind,
 ) -> anyhow::Result<()> {
     if !index_path.exists() {
         anyhow::bail!(
@@ -267,18 +336,27 @@ async fn cmd_query(
     if query_dim != dim {
         anyhow::bail!("embedder dim ({}) 与索引 dim ({}) 不匹配", query_dim, dim);
     }
-    let bm25 = Arc::new(InMemoryBM25Index);
+    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
 
     let retriever = HybridRetriever::new(embedder, vector, bm25);
     let q = EnhancedQuery::passthrough(text);
     let hits = retriever.retrieve(&q, k).await?;
 
     if hits.is_empty() {
-        println!("⚠️  无命中。索引文件：{}", index_path.display());
+        println!(
+            "⚠️  无命中。索引文件：{}（bm25={}）",
+            index_path.display(),
+            bm25_name
+        );
         return Ok(());
     }
 
-    println!("✅ Top-{} hits (using {})", hits.len(), query_model_id);
+    println!(
+        "✅ Top-{} hits (embedder={} · bm25={})",
+        hits.len(),
+        query_model_id,
+        bm25_name
+    );
     println!();
     for (i, h) in hits.iter().enumerate() {
         let citation = Citation::from(h);
