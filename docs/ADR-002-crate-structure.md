@@ -15,24 +15,27 @@
 
 ## Decision
 
-7 个 crate，照搬完整方案图 3 类图边界：
+**8 个 crate**（Day 2 新增 `arkui-rag-indexer`），照搬完整方案图 3 类图边界：
 
 | Crate | 职责 | 关键依赖 |
 |---|---|---|
 | `arkui-rag-core` | trait + 类型 + Error（无任何后端） | thiserror、serde、async-trait |
 | `arkui-rag-embedding` | Embedder 实现（Mock + ONNX BGE-M3） | ort (feature `onnx`)、tokenizers、ndarray |
-| `arkui-rag-storage` | VectorStore + BM25Index + MetadataStore traits | (Week 2: lancedb + tantivy) |
-| `arkui-rag-chunker` | ASTChunker 实现（Markdown + tree-sitter） | (Week 2: tree-sitter-typescript / kotlin / swift) |
+| `arkui-rag-storage` | VectorStore + BM25Index + MetadataStore traits + In-Memory 实现 | (Week 2 起：lancedb + tantivy) |
+| `arkui-rag-chunker` | ASTChunker 实现（Markdown + frontmatter + tree-sitter） | serde_yaml；(Week 2: tree-sitter-typescript / kotlin / swift) |
 | `arkui-rag-retrieval` | HybridRetriever + RRF + CrossEncoderReranker | core + storage + embedding |
+| `arkui-rag-indexer` | 索引流水线编排（walk → chunk → embed → store） | core + chunker + embedding + storage + walkdir |
 | `arkui-rag-server` | HTTP + MCP + LSP 适配 | axum (feature `http`) / (mcp / lsp 待定) |
-| `arkui-rag-cli` | 二进制入口 `arkui-rag` | server + retrieval + chunker + embedding |
+| `arkui-rag-cli` | 二进制入口 `arkui-rag` | server + retrieval + chunker + embedding + storage + indexer |
 
 依赖图（单向）：
 ```
-cli → server → retrieval → storage → core
-                                ↘ embedding → core
+cli → server   → retrieval → storage → core
+   ↘ indexer  ─┘         ↘ embedding → core
                           chunker → core
 ```
+
+`indexer` 在 Day 2 引入，对应技术方案 §9 图 5 索引流程图、图 2 容器图里的"索引管道 Indexing"独立 box。把 chunker / embedding / storage 三者串起来，是 retrieval 的镜像方向（写入而非查询）。
 
 ## Feature gate 策略
 
