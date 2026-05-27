@@ -13,8 +13,8 @@ pub fn render_markdown(summary: &EvalSummary, run_at: &str) -> String {
     let _ = writeln!(out, "- **评估集**: `{}`", summary.config.queries_path);
     let _ = writeln!(out, "- **索引**: `{}`", summary.config.index_path);
     let _ = writeln!(out, "- **k**: {}", summary.k);
-    let _ = writeln!(out, "- **配置**: embedder=`{}` · bm25=`{}` · rerank=`{}` · pre_rerank_k=`{}`",
-        summary.config.embedder, summary.config.bm25, summary.config.rerank, summary.config.pre_rerank_k);
+    let _ = writeln!(out, "- **配置**: embedder=`{}` · bm25=`{}` · rerank=`{}` · hyde=`{}` · pre_rerank_k=`{}`",
+        summary.config.embedder, summary.config.bm25, summary.config.rerank, summary.config.hyde, summary.config.pre_rerank_k);
     let _ = writeln!(out);
 
     let _ = writeln!(out, "## 整体指标");

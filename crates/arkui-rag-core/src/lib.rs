@@ -6,6 +6,7 @@ pub mod embedder;
 pub mod error;
 pub mod hit;
 pub mod query;
+pub mod query_enhancer;
 pub mod reranker;
 pub mod retriever;
 
@@ -15,5 +16,6 @@ pub use embedder::Embedder;
 pub use error::{RagError, Result};
 pub use hit::{Citation, Hit};
 pub use query::{EnhancedQuery, QueryFilters, QueryIntent};
+pub use query_enhancer::{PassthroughEnhancer, QueryEnhancer};
 pub use reranker::Reranker;
 pub use retriever::Retriever;

@@ -7,10 +7,12 @@
 //! vector 索引 (`<index-path-dir>/bm25/`) 并列存放。
 
 use arkui_rag_chunker::MarkdownChunker;
-use arkui_rag_core::{Citation, Embedder, EnhancedQuery, Reranker, Retriever};
+use arkui_rag_core::{
+    Citation, Embedder, PassthroughEnhancer, QueryEnhancer, Reranker, Retriever,
+};
 use arkui_rag_embedding::MockEmbedder;
 use arkui_rag_indexer::Indexer;
-use arkui_rag_retrieval::{CrossEncoderReranker, HybridRetriever};
+use arkui_rag_retrieval::{CrossEncoderReranker, HybridRetriever, MockHydeEnhancer};
 use arkui_rag_storage::{BM25Index, InMemoryBM25Index, InMemoryVectorStore};
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::{Path, PathBuf};
@@ -34,6 +36,14 @@ enum Bm25Kind {
     Memory,
     /// Tantivy 真实 BM25 倒排检索（Day 4，需 --features tantivy）
     Tantivy,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum HydeKind {
+    /// 透传（不改写，默认）
+    None,
+    /// MockHyde：确定性规则生成 ArkTS 风格假代码（Day 7）
+    Mock,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -120,6 +130,9 @@ enum Cmd {
         /// Reranker 模型标识（onnx 默认 bge-reranker-v2-m3）
         #[arg(long, default_value = "bge-reranker-v2-m3")]
         reranker_model_id: String,
+        /// Query 改写器（Day 7）：none/mock（MockHyde 生成 ArkTS 假代码）
+        #[arg(long, value_enum, default_value_t = HydeKind::None)]
+        hyde: HydeKind,
     },
     /// Corpus 管理
     Corpus {
@@ -157,6 +170,9 @@ enum Cmd {
         reranker_model_path: Option<PathBuf>,
         #[arg(long, default_value = "bge-reranker-v2-m3")]
         reranker_model_id: String,
+        /// Query 改写器（Day 7）：none/mock
+        #[arg(long, value_enum, default_value_t = HydeKind::None)]
+        hyde: HydeKind,
     },
 }
 
@@ -231,6 +247,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             pre_rerank_k,
             reranker_model_path,
             reranker_model_id,
+            hyde,
         } => {
             cmd_query(
                 &text,
@@ -243,6 +260,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 pre_rerank_k,
                 reranker_model_path.as_deref(),
                 &reranker_model_id,
+                hyde,
             )
             .await
         }
@@ -259,6 +277,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             pre_rerank_k,
             reranker_model_path,
             reranker_model_id,
+            hyde,
         } => {
             cmd_eval(
                 &queries,
@@ -272,9 +291,18 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 pre_rerank_k,
                 reranker_model_path.as_deref(),
                 &reranker_model_id,
+                hyde,
             )
             .await
         }
+    }
+}
+
+/// 构造 query enhancer 实例 + 报告 kind 名（写入报告标识 / 评估配置）。
+fn build_enhancer(kind: HydeKind) -> (Arc<dyn QueryEnhancer>, &'static str) {
+    match kind {
+        HydeKind::None => (Arc::new(PassthroughEnhancer), "none"),
+        HydeKind::Mock => (Arc::new(MockHydeEnhancer::new()), "mock-hyde-arkts"),
     }
 }
 
@@ -439,6 +467,7 @@ async fn cmd_index(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 async fn cmd_query(
     text: &str,
     k: usize,
@@ -450,6 +479,7 @@ async fn cmd_query(
     pre_rerank_k: usize,
     reranker_model_path: Option<&Path>,
     reranker_model_id: &str,
+    hyde_kind: HydeKind,
 ) -> anyhow::Result<()> {
     if !index_path.exists() {
         anyhow::bail!(
@@ -493,7 +523,8 @@ async fn cmd_query(
         .unwrap_or_else(|| "none".to_string());
 
     let retriever = HybridRetriever::new(embedder, vector, bm25);
-    let q = EnhancedQuery::passthrough(text);
+    let (enhancer, hyde_name) = build_enhancer(hyde_kind);
+    let q = enhancer.enhance(text).await?;
 
     // 启用 reranker 时先取 pre_rerank_k 个候选送精排
     let retrieve_k = if reranker_opt.is_some() {
@@ -510,20 +541,22 @@ async fn cmd_query(
 
     if hits.is_empty() {
         println!(
-            "⚠️  无命中。索引文件：{}（bm25={} · rerank={}）",
+            "⚠️  无命中。索引文件：{}（bm25={} · rerank={} · hyde={}）",
             index_path.display(),
             bm25_name,
-            rerank_name
+            rerank_name,
+            hyde_name
         );
         return Ok(());
     }
 
     println!(
-        "✅ Top-{} hits (embedder={} · bm25={} · rerank={})",
+        "✅ Top-{} hits (embedder={} · bm25={} · rerank={} · hyde={})",
         hits.len(),
         query_model_id,
         bm25_name,
-        rerank_name
+        rerank_name,
+        hyde_name
     );
     println!();
     for (i, h) in hits.iter().enumerate() {
@@ -565,6 +598,7 @@ async fn cmd_eval(
     pre_rerank_k: usize,
     reranker_model_path: Option<&Path>,
     reranker_model_id: &str,
+    hyde_kind: HydeKind,
 ) -> anyhow::Result<()> {
     use arkui_rag_eval::{load_queries, render_markdown, EvalConfig, Evaluator};
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -608,13 +642,16 @@ async fn cmd_eval(
     let retriever: Arc<dyn arkui_rag_core::Retriever> =
         Arc::new(HybridRetriever::new(embedder, vector, bm25));
 
+    let (enhancer, hyde_name) = build_enhancer(hyde_kind);
+
     let queries = load_queries(queries_path)?;
     println!(
-        "📊 跑评估：{} 个 query · embedder={} · bm25={} · rerank={} · k={}",
+        "📊 跑评估：{} 个 query · embedder={} · bm25={} · rerank={} · hyde={} · k={}",
         queries.len(),
         query_model_id,
         bm25_name,
         rerank_name,
+        hyde_name,
         k
     );
 
@@ -622,6 +659,7 @@ async fn cmd_eval(
         embedder: query_model_id.clone(),
         bm25: bm25_name.to_string(),
         rerank: rerank_name.clone(),
+        hyde: hyde_name.to_string(),
         pre_rerank_k,
         index_path: index_path.display().to_string(),
         queries_path: queries_path.display().to_string(),
@@ -629,6 +667,7 @@ async fn cmd_eval(
     let mut evaluator = Evaluator::new(retriever)
         .with_k(k)
         .with_pre_rerank_k(pre_rerank_k)
+        .with_enhancer(enhancer)
         .with_config(config);
     if let Some((rr, _)) = reranker_opt {
         evaluator = evaluator.with_reranker(rr);
@@ -651,8 +690,8 @@ async fn cmd_eval(
         .map(|d| d.as_secs())
         .unwrap_or(0);
     let default_report = format!(
-        "reports/eval-{}-{}-{}-{}-{}.md",
-        timestamp, query_model_id, bm25_name, rerank_name, k
+        "reports/eval-{}-{}-{}-{}-{}-{}.md",
+        timestamp, query_model_id, bm25_name, rerank_name, hyde_name, k
     );
     let report_path = report_path
         .map(|p| p.to_path_buf())

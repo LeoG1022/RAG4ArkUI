@@ -2,18 +2,18 @@
 
 > **文档定位**：项目长期维护文档（类似 ADR / README），跨阶段全景视图。
 > **维护约定**：每个 Day 完成 commit 后，agent **同步更新本文档的进度标记**（不单独 commit）；新阶段补充进度行；不在本文档归档单次 round 的细节（那些去 STATUS-<slug>.md）。
-> **最后更新**：Day 6 完成（2026-05-27 · commit `44d6233`）
+> **最后更新**：Day 7 完成（2026-05-27 · commit pending · HyDE 改写器）
 
 ---
 
 ## 📍 当前位置
 
-**Day 6 完成 · 检索质量评估闭环就位 · §8.5 共识 4 Eval-Driven 落地**
+**Day 7 完成 · HyDE 改写器接入 · QueryEnhancer trait + MockHyde 真活**
 
-- 9 个 Cargo crate（最新 `arkui-rag-eval`）
-- 31 个测试（默认 features） + onnx/tantivy feature 扩展可达 41 个
-- 5 个 STATUS 文档（规则 #17 生效后强制配套）
-- 12 个 git commit / 历史 5 个工作 Day
+- 9 个 Cargo crate
+- 37 个测试（默认 features · +1 PassthroughEnhancer + 6 MockHyde）+ onnx/tantivy feature 扩展可达 47 个
+- 6 个 STATUS 文档（规则 #17 生效后强制配套）
+- 13 个 git commit / 历史 6 个工作 Day
 
 ---
 
@@ -37,10 +37,10 @@ gantt
     TantivyBM25 真活                 :done,    d4, after d35, 1d
     规则 #17 STATUS-PER-ROUND       :done,    bsr, after d4, 1d
     OnnxReranker 真活                :done,    d5, after bsr, 1d
-    检索质量评估 (当前)              :active,  d6, after d5, 2d
+    检索质量评估                     :done,    d6, after d5, 2d
+    HyDE 改写器 (当前)               :active,  d7, after d6, 1d
 
     section ⏳ Week 2 末
-    HyDE 改写器                      :         d7, after d6, 1d
     tantivy-jieba 中文升级           :         d8, after d7, 1d
     Parent-Child 父子索引            :         d11, after d8, 1d
 
@@ -82,19 +82,20 @@ gantt
 | `331a912` | 4 | 7 | **TantivyBM25Index** 真活 → Hybrid 名实相符 | [STATUS-day4](STATUS-day4-bm25-tantivy.md)（追溯） |
 | `20056b3` | Bootstrap | 8 | **规则 #17** STATUS-PER-ROUND FAIL 级 | [STATUS-bootstrap](STATUS-bootstrap-status-rule.md) |
 | `331f180` | 5 | 9 | **OnnxReranker 真活** → Hybrid + Rerank 业界基线 | [STATUS-day5](STATUS-day5-reranker.md) |
-| `44d6233` | **6 (当前)** | **10** | **检索质量评估闭环**（arkui-rag-eval crate） | [STATUS-day6](STATUS-day6-eval.md) |
-| _(本 commit)_ | — | 11 | ROADMAP 全景图归档 | [STATUS-roadmap](STATUS-roadmap-doc.md) |
+| `44d6233` | 6 | 10 | 检索质量评估闭环（arkui-rag-eval crate） | [STATUS-day6](STATUS-day6-eval.md) |
+| `0228109` | — | 11 | ROADMAP 全景图归档 | [STATUS-roadmap](STATUS-roadmap-doc.md) |
+| _(本 commit)_ | **7 (当前)** | **12** | **HyDE 改写器**（QueryEnhancer trait + MockHyde · CLI --hyde） | [STATUS-day7](STATUS-day7-hyde.md) |
 
 ---
 
 ## ⏳ 剩余切片（按推荐顺序）
 
-### 🟢 Week 2 末 · 检索质量纵深（3 个切片）
+### 🟢 Week 2 末 · 检索质量纵深（2 个切片，Day 7 已完成）
 
 | Day | 切片 | 价值 | 工作量 | 依赖 |
 |---|---|---|---|---|
-| **7 推荐** | HyDE 改写器（小 LLM 假代码生成） | 自然语言 query → 代码风格再检索；有评估集了，效果可立即量化 | 1-2 commit | Day 3 ✓ |
-| 8 | tantivy-jieba 中文分词 | 中文 BM25 精度从 ngram 升级；评估集可量化提升 | 0.5 commit | Day 4 ✓ |
+| ~~7~~ | ~~HyDE 改写器~~ | ✅ **Day 7 完成**（MockHyde 真活，远程 LLM 接入留 Week 3） | — | — |
+| 8 推荐 | tantivy-jieba 中文分词 | 中文 BM25 精度从 ngram 升级；评估集可量化提升 | 0.5 commit | Day 4 ✓ |
 | 11 | Parent-Child 父子索引 | 检索小、返回大（方案 §1.4 标准） | 1 commit | Day 6 ✓ |
 
 ### 🟡 Week 3 · 规模化 + 流水线收尾（4 个切片）
@@ -157,13 +158,13 @@ gantt
 | 方案章节里程碑 | 状态 | 完成度 |
 |---|---|---|
 | Week 1: Rust 骨架 + tree-sitter + LanceDB + Tantivy + BGE-M3 | **6/7** ✅ | tree-sitter ⏳ + LanceDB ⏳ |
-| Week 2: 混合检索 + Reranker + HyDE + 评估集 | **3/4** ✅ | HyDE ⏳（Day 7 推荐） |
+| Week 2: 混合检索 + Reranker + HyDE + 评估集 | **4/4** ✅ | 全部达成 |
 | Week 3: HTTP + MCP + CLI | **1/3** ✅ | HTTP/MCP ⏳ |
 | Week 4: IDE 插件 (DevEco/IntelliJ) | **0/2** ⏳ | — |
 | Week 5: Claude Code 接入 | **0/1** ⏳ | — |
 | Week 6: 自动安装 + corpus 分发 + 文档 + 评估报告 | **1/4** ✅ | 评估报告 ✓ |
 
-**当前完成度估算：~35%**（前期骨架 + 检索核心 + 评估闭环权重高，MVP 已具雏形）。
+**当前完成度估算：~40%**（Week 2 全部达成 · Hybrid + Rerank + Eval + HyDE 完整闭环）。
 
 ---
 
@@ -185,22 +186,23 @@ gantt
 
 | 里程碑 | 累计 commit | 累计 round |
 |---|---|---|
-| ✅ Hybrid + Rerank + Eval 基线（**已达成 · 当前位置**） | 12 | 11 |
-| 完整检索能力（HyDE + tree-sitter + Parent-Child） | +5 | 16 |
+| ✅ Hybrid + Rerank + Eval 基线 | 12 | 11 |
+| ✅ Week 2 全部达成（+ HyDE · **当前位置**） | 13 | 12 |
+| 完整检索能力（tree-sitter + Parent-Child） | +3 | 15 |
 | 协议层完整（HTTP + MCP + LSP） | +12 | 28 |
 | 首个 IDE 插件 MVP（DevEco） | +8 | 36 |
 | 公开 release 1.0 | +5 | 41 |
 
-**估算**：从当前 Round 11 → 完整 MVP 1.0，约还需 **30+ commit** / **4 周**。
+**估算**：从当前 Round 12 → 完整 MVP 1.0，约还需 **30+ commit** / **4 周**。
 
 ---
 
 ## 🔴 关键路径（必走切片，不可省）
 
 ```
-Day 6 评估闭环（当前已达成）
+Day 6 评估闭环 ✓
    ↓
-Day 7 HyDE → 评估对比
+Day 7 HyDE ✓（当前已达成）
    ↓
 Day 10 tree-sitter（代码 corpus 解锁）
    ↓

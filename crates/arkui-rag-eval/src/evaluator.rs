@@ -1,7 +1,9 @@
 //! Evaluator —— 跑 ground truth 评估集 + 汇总指标。
 
 use crate::types::{EvalConfig, EvalQuery, EvalResult, EvalSummary};
-use arkui_rag_core::{EnhancedQuery, RagError, Result, Retriever};
+use arkui_rag_core::{
+    EnhancedQuery, PassthroughEnhancer, QueryEnhancer, RagError, Result, Retriever,
+};
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
@@ -20,6 +22,8 @@ pub struct Evaluator {
     k: usize,
     /// 可选 reranker，evaluator 内部链式调用（用户传入已构造好的）
     reranker: Option<Arc<dyn arkui_rag_core::Reranker>>,
+    /// Query enhancer（默认 PassthroughEnhancer）
+    enhancer: Arc<dyn QueryEnhancer>,
     pre_rerank_k: usize,
     config: EvalConfig,
 }
@@ -30,6 +34,7 @@ impl Evaluator {
             retriever,
             k: 5,
             reranker: None,
+            enhancer: Arc::new(PassthroughEnhancer),
             pre_rerank_k: 50,
             config: EvalConfig::default(),
         }
@@ -42,6 +47,12 @@ impl Evaluator {
 
     pub fn with_reranker(mut self, r: Arc<dyn arkui_rag_core::Reranker>) -> Self {
         self.reranker = Some(r);
+        self
+    }
+
+    /// Day 7：注入 QueryEnhancer（默认 PassthroughEnhancer，不改写）
+    pub fn with_enhancer(mut self, e: Arc<dyn QueryEnhancer>) -> Self {
+        self.enhancer = e;
         self
     }
 
@@ -91,7 +102,7 @@ impl Evaluator {
 
     async fn eval_one(&self, q: &EvalQuery) -> Result<EvalResult> {
         let start = Instant::now();
-        let eq = EnhancedQuery::passthrough(q.query.clone());
+        let eq: EnhancedQuery = self.enhancer.enhance(&q.query).await?;
 
         let retrieve_k = if self.reranker.is_some() {
             self.pre_rerank_k.max(self.k)

@@ -1,6 +1,6 @@
 # rag4arkui-core
 
-> 状态：in-progress (Day 6 检索质量可量化 · Eval-Driven 闭环就位 · 9 crate)
+> 状态：in-progress (Day 7 HyDE 接入 · **Week 2 全部达成** · Advanced RAG 4 件套完整)
 > 创建：2026-05-27
 
 ## 用途
@@ -35,3 +35,4 @@
 - [9-2026-05-27-day5-reranker.md](9-2026-05-27-day5-reranker.md) — Day 5 Reranker 真活（BGE-Reranker-v2 ONNX）· STATUS：`docs/STATUS-day5-reranker.md`
 - [10-2026-05-27-day6-eval.md](10-2026-05-27-day6-eval.md) — Day 6 检索质量评估（arkui-rag-eval crate · recall@k + MRR + 延迟）· STATUS：`docs/STATUS-day6-eval.md`
 - [11-2026-05-27-roadmap-doc.md](11-2026-05-27-roadmap-doc.md) — ROADMAP 全景图归档到 docs/ · STATUS：`docs/STATUS-roadmap-doc.md`
+- [12-2026-05-27-day7-hyde.md](12-2026-05-27-day7-hyde.md) — Day 7 HyDE 改写器（QueryEnhancer + MockHyde · CLI --hyde · Week 2 全部达成 ⭐）· STATUS：`docs/STATUS-day7-hyde.md`

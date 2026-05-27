@@ -56,6 +56,9 @@ pub struct EvalConfig {
     pub embedder: String,
     pub bm25: String,
     pub rerank: String,
+    /// Day 7：query enhancer 标识（none / mock-hyde-arkts 等）
+    #[serde(default)]
+    pub hyde: String,
     pub pre_rerank_k: usize,
     pub index_path: String,
     pub queries_path: String,
