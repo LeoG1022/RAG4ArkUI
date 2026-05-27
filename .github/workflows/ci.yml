@@ -1,0 +1,136 @@
+# RAG4ArkUI · GitHub Actions CI
+#
+# 触发：
+#   - push 到 master / main
+#   - 所有 PR
+#   - workflow_dispatch（手动跑 onnx 编译验证）
+#
+# 设计原则：
+#   1. 5 个轻量 job 并行，单 job < 5 分钟（首次因冷缓存约 8-10 分钟）
+#   2. onnx feature 不入主流程（首次拉 ort ~300MB + 编译 ~10 分钟，仅手动触发）
+#   3. Swatinem/rust-cache 缓存 ~/.cargo/{registry,git} + target/
+#   4. Linux-only 起步；跨平台矩阵留到 release 阶段
+#
+# 对应文档：docs/STATUS-day2.md §6.2 表 A 项
+# 落地依据：feedback/meta/4-2026-05-27-ci.md
+
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_onnx_build:
+        description: "Also run onnx-build job (~10min first run)"
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  # 注意：不全局设 RUSTFLAGS=-D warnings —— 会让第三方依赖的 warning 也 fail。
+  # 严格 warning 门禁仅在 clippy job 里通过 `-- -D warnings` 启用。
+
+# 同一分支并发的 CI 取消旧的，节省额度
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: cargo check (workspace)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: crates
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+      - run: cargo check --workspace --all-targets
+
+  test:
+    name: cargo test (workspace)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: crates
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+      - name: Run unit + integration tests
+        run: cargo test --workspace --no-fail-fast
+
+  fmt:
+    name: cargo fmt --check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: crates
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: cargo clippy -D warnings
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: crates
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  smoke:
+    name: end-to-end smoke (mock)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [check]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+      - name: Run demo-smoke.sh
+        run: bash scripts/demo-smoke.sh --verbose
+
+  # 仅手动触发 —— ort 拉原生库 + 编译 ~10 分钟
+  onnx-build:
+    name: cargo check --features onnx
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.run_onnx_build == 'true'
+    defaults:
+      run:
+        working-directory: crates
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+          key: onnx
+      - name: Check embedding crate with onnx feature
+        run: cargo check -p arkui-rag-embedding --features onnx
+      - name: Build CLI with onnx feature
+        run: cargo check -p arkui-rag-cli --features onnx

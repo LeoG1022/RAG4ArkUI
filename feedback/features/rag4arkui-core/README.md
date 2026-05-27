@@ -29,3 +29,4 @@
 - [3-2026-05-27-day2-status-doc.md](3-2026-05-27-day2-status-doc.md) — Day 2 阶段快照文档（架构图 + 输入/输出 + 验证手段）
 - [4-2026-05-27-day2-smoke.md](4-2026-05-27-day2-smoke.md) — Day 2.5 demo smoke 脚本（端到端 CLI 二进制行为验证）
 - [5-2026-05-27-day3-onnx-embedder.md](5-2026-05-27-day3-onnx-embedder.md) — Day 3 OnnxEmbedder async wrapper + CLI --embedder onnx 真实语义检索上线
+- [6-2026-05-27-day3-ci.md](6-2026-05-27-day3-ci.md) — Day 3.5 GitHub Actions CI（check / test / clippy / fmt / smoke + onnx 手动）
