@@ -139,10 +139,26 @@
     - **机械化校验**：`check-consistency.sh` M-FEATURE-PLAN 规则在 pre-commit 自动检查（生效自 2026-05-22，早于此日期的文件自动豁免）
     - **理由**：代码改动可从 git diff 追溯，但决策背景和对话上下文会随时间丢失；强制归档这两项才能让未来 agent 和人类真正理解"为什么这样做"
 
-<!-- [可选业务规则示例] 以下规则 #17 是业务特定硬约束的格式示例。
+17. **每轮 agent 提交必须配套架构快照 STATUS 文档（FAIL级硬性规则）**：
+    - **触发条件**：agent 通过 `scripts/commit.sh` 提交时（pre-commit hook 检测 `.git/hooks/.agent-pending` 标记），staged 中**新增**任何 `feedback/features/<name>/[N]-<date>-<slug>.md` 文件
+    - **强制产物**：同一 commit 内必须存在 `docs/STATUS-<slug>.md`（slug 与 feature log 的 slug 严格一致；STATUS 文件可以在本 commit 新增，也可以已经存在于仓库中）
+    - **强制内容**：STATUS 文档必须包含以下 6 个 H2 节：
+      1. `## 当前状态` —— 本阶段交付清单、关键变化
+      2. `## 输入契约` —— 新增/变化的输入（CLI 参数、API、文件格式）
+      3. `## 输出契约` —— 新增/变化的输出
+      4. `## 验证手段` —— 用户手动 + 自动化两个子节
+      5. `## 与上一阶段的关联性` —— 增量、兼容性、破坏性变更
+      6. `## 完成度 / 下一阶段` —— 达成度评估 + 下一阶段建议
+    - **手工提交豁免**：用户直接 `git commit`（不走 `scripts/commit.sh`）时 `.agent-pending` 不存在 → 本规则不触发。**仅约束 AI agent 提交**。
+    - **机械化校验**：`check-consistency.sh` 的 `M-STATUS-PER-ROUND` 规则在 pre-commit 自动检查
+    - **STATUS 文件命名规则**：`docs/STATUS-<slug>.md`，slug = feature log 文件名去掉 `N-YYYY-MM-DD-` 前缀和 `.md` 后缀。例：`feedback/features/foo/7-2026-05-27-day4-bm25.md` ↔ `docs/STATUS-day4-bm25.md`
+    - **STATUS 与 feature log 的边界**：feature log 记录"为什么这样做"（决策 + 对话），STATUS 记录"现在是什么状态"（架构 + 契约 + 验证），二者互补不重复
+    - **理由**：agent 推进多轮后，"当前是什么状态"会被 git log 里的散落 feature log 淹没；强制每轮快照让任何时刻都能 5 分钟搞清架构现状、与上下游的关联、完成度
+
+<!-- [可选业务规则示例] 以下规则 #18 是业务特定硬约束的格式示例。
      使用者按自己的项目需求添加类似规则（例如：特定目录的代码必须通过编译验证才能提交）。
      如无对应业务需求，可删除此注释块。
-17. **[项目特定] 业务代码改动必须通过编译验证（FAIL级硬性规则示例）**：
+18. **[项目特定] 业务代码改动必须通过编译验证（FAIL级硬性规则示例）**：
     - **触发条件**：staged 改动包含 `<项目代码目录>/**` 下的源码文件
     - **强制流程**：pre-commit hook 自动调用编译验证脚本
     - **任一步失败 → 阻止 commit**

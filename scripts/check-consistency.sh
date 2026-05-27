@@ -586,6 +586,49 @@ else
   yellow "M-NO-VERIFY-BAN .last-verified 标记文件不存在（首次clone / 初始环境）"
 fi
 
+# ─────────────────────────────────────────────
+# M-STATUS-PER-ROUND: agent 每轮 feature log 必须配套 docs/STATUS-<slug>.md(FAIL)
+# 仅当 .git/hooks/.agent-pending 存在时启用（即 scripts/commit.sh 发起的提交）；
+# 手工 git commit 不触发此校验。
+# 规则 #17 详见 AGENTS.md。
+# ─────────────────────────────────────────────
+AGENT_PENDING="$ROOT/.git/hooks/.agent-pending"
+if [[ -f "$AGENT_PENDING" ]]; then
+  # 仅扫 staged 新增的 feature log（Added，不含 Modified）
+  NEW_FEATURE_LOGS=$(git diff --cached --name-only --diff-filter=A 2>/dev/null \
+                     | grep -E '^feedback/features/[^/]+/[0-9]+-[0-9]{4}-[0-9]{2}-[0-9]{2}-[^/]+\.md$' || true)
+  if [[ -n "$NEW_FEATURE_LOGS" ]]; then
+    MISSING_STATUS=()
+    for fl in $NEW_FEATURE_LOGS; do
+      # 从 N-YYYY-MM-DD-<slug>.md 提取 slug
+      basename=$(basename "$fl" .md)
+      slug=$(echo "$basename" | sed -E 's/^[0-9]+-[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
+      status_path="docs/STATUS-${slug}.md"
+      # STATUS 文件可以在本 staged 新增，或已存在
+      if [[ ! -f "$status_path" ]]; then
+        if ! git diff --cached --name-only 2>/dev/null | grep -q "^${status_path}$"; then
+          MISSING_STATUS+=("$status_path  ← 缺，对应 $fl")
+        fi
+      fi
+    done
+    if [[ ${#MISSING_STATUS[@]} -eq 0 ]]; then
+      green "M-STATUS-PER-ROUND 所有新增 feature log 都配套了 STATUS 文档"
+    else
+      red "M-STATUS-PER-ROUND 以下 STATUS 文档缺失（AGENTS.md 规则 #17，FAIL级）："
+      for m in "${MISSING_STATUS[@]}"; do
+        echo -e "     - $m"
+      done
+      echo -e "  生成模板：\033[1mtouch docs/STATUS-<slug>.md\033[0m 后填 6 节（见 AGENTS.md 规则 #17）"
+      FAIL=1
+    fi
+  else
+    green "M-STATUS-PER-ROUND 本次提交无新增 feature log，跳过检查"
+  fi
+else
+  # 手工 git commit（未走 scripts/commit.sh）→ 规则不生效，静默
+  :
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if [[ "$FAIL" -eq 1 ]]; then

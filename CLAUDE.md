@@ -79,7 +79,7 @@ bash scripts/check-api-parity.sh <file-or-dir>
 |---|---|---|
 | （使用者自定义） | — | — |
 
-**check-consistency.sh（元数据 + 结构一致性，19 条）**
+**check-consistency.sh（元数据 + 结构一致性，20 条）**
 
 | 规则 ID | 检查 | 等级 |
 |---|---|---|
@@ -102,6 +102,7 @@ bash scripts/check-api-parity.sh <file-or-dir>
 | M-SKILL-REF-VALID | frontmatter calls/references 路径必须存在 | FAIL |
 | M-SKILL-TABLE-SYNC | CLAUDE.md SKILL-TABLE 与 frontmatter 同步 | FAIL |
 | M-README-PURE | README 不含过多 agent 术语 | WARN |
+| M-STATUS-PER-ROUND | agent 提交新增 feature log → 必须配套 `docs/STATUS-<slug>.md`（AGENTS.md #17，仅 agent 提交） | FAIL |
 
 规则背后的"为什么"见 [`feedback/DESIGN.md`](feedback/DESIGN.md)。
 

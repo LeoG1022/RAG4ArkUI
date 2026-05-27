@@ -6,6 +6,8 @@
 #   1. 拒绝 --no-verify 参数（规则 #14，FAIL级硬性规则）
 #   2. Git 前置检查（规则 #1）
 #   3. Agent commit 后自动记录统计（规则 #3）
+#   4. 写入 .agent-pending 标记让 pre-commit hook 区分 agent vs 手工提交
+#      （规则 #17 · 每轮 STATUS 硬性规则仅对 agent 提交生效）
 #
 # 用法:
 #   bash scripts/commit.sh -m "commit message"
@@ -37,11 +39,18 @@ bash scripts/preflight.sh 2>&1 | grep -q '未提交' && {
   echo "   选项：commit（先提交当前修改） / stash（暂存）/ proceed（继续）"
 }
 
-# 3. 执行 git commit
+# 3. 标记本次提交为 agent 提交（pre-commit hook 读此标记判断是否启用
+#    "每轮 STATUS 硬性"规则；规则 #17）
+AGENT_MARKER="$ROOT/.git/hooks/.agent-pending"
+touch "$AGENT_MARKER"
+# 无论 commit 成败都清理标记，避免下次手工 git commit 误触发
+trap 'rm -f "$AGENT_MARKER" 2>/dev/null || true' EXIT
+
+# 4. 执行 git commit
 git commit "$@"
 commit_rc=$?
 
-# 4. Agent commit 后自动记录统计（规则 #3）
+# 5. Agent commit 后自动记录统计（规则 #3）
 if [[ "$commit_rc" -eq 0 ]]; then
   bash scripts/log-tokens.sh --from-commit HEAD 2>&1 || true
 fi

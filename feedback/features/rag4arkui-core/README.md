@@ -1,6 +1,6 @@
 # rag4arkui-core
 
-> 状态：in-progress (Day 4 真实 Hybrid 检索 · 向量 + BM25 双路 RRF 融合就绪)
+> 状态：in-progress (Day 4 真实 Hybrid + 规则 #17 立 · 每轮 agent 提交都强制 STATUS 快照)
 > 创建：2026-05-27
 
 ## 用途
@@ -30,4 +30,5 @@
 - [4-2026-05-27-day2-smoke.md](4-2026-05-27-day2-smoke.md) — Day 2.5 demo smoke 脚本（端到端 CLI 二进制行为验证）
 - [5-2026-05-27-day3-onnx-embedder.md](5-2026-05-27-day3-onnx-embedder.md) — Day 3 OnnxEmbedder async wrapper + CLI --embedder onnx 真实语义检索上线
 - [6-2026-05-27-day3-ci.md](6-2026-05-27-day3-ci.md) — Day 3.5 GitHub Actions CI（check / test / clippy / fmt / smoke + onnx 手动）
-- [7-2026-05-27-day4-bm25-tantivy.md](7-2026-05-27-day4-bm25-tantivy.md) — Day 4 BM25 / Tantivy 实装（HybridRetriever 真正双路 RRF 融合）
+- [7-2026-05-27-day4-bm25-tantivy.md](7-2026-05-27-day4-bm25-tantivy.md) — Day 4 BM25 / Tantivy 实装（HybridRetriever 真正双路 RRF 融合）· STATUS：`docs/STATUS-day4-bm25-tantivy.md`（追溯）
+- [8-2026-05-27-bootstrap-status-rule.md](8-2026-05-27-bootstrap-status-rule.md) — Bootstrap：立 AGENTS.md 规则 #17（每轮 STATUS 硬性）· STATUS：`docs/STATUS-bootstrap-status-rule.md`
