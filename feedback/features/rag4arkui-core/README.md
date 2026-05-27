@@ -26,3 +26,4 @@
 
 - [1-2026-05-27-day1-skeleton.md](1-2026-05-27-day1-skeleton.md) — Day 1 骨架（trait + 类型 + ONNX 代码 + CLI stub）
 - [2-2026-05-27-day2-mock-demo.md](2-2026-05-27-day2-mock-demo.md) — Day 2 端到端 Mock Demo（indexer + 持久化 + frontmatter + HybridRetriever 真活）
+- [3-2026-05-27-day2-status-doc.md](3-2026-05-27-day2-status-doc.md) — Day 2 阶段快照文档（架构图 + 输入/输出 + 验证手段）
