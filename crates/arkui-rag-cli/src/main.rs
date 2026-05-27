@@ -126,6 +126,38 @@ enum Cmd {
         #[command(subcommand)]
         op: CorpusOp,
     },
+    /// 跑检索质量评估（Day 6）
+    Eval {
+        /// 评估集 YAML 路径
+        #[arg(long, default_value = "corpus/_eval/queries.yaml")]
+        queries: PathBuf,
+        /// 索引产物路径
+        #[arg(long, default_value = DEFAULT_INDEX_PATH)]
+        index_path: PathBuf,
+        /// 评估 k（默认 5）
+        #[arg(short, long, default_value_t = 5)]
+        k: usize,
+        /// 报告输出路径（默认 reports/eval-<timestamp>.md）
+        #[arg(long)]
+        report_path: Option<PathBuf>,
+        /// embedder 类型（与建索引一致）
+        #[arg(long, value_enum, default_value_t = EmbedderKind::Mock)]
+        embedder: EmbedderKind,
+        #[arg(long)]
+        model_path: Option<PathBuf>,
+        /// BM25 后端（与建索引一致）
+        #[arg(long, value_enum, default_value_t = Bm25Kind::Memory)]
+        bm25: Bm25Kind,
+        /// Reranker 后端
+        #[arg(long, value_enum, default_value_t = RerankerKind::None)]
+        rerank: RerankerKind,
+        #[arg(long, default_value_t = 50)]
+        pre_rerank_k: usize,
+        #[arg(long)]
+        reranker_model_path: Option<PathBuf>,
+        #[arg(long, default_value = "bge-reranker-v2-m3")]
+        reranker_model_id: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -215,6 +247,34 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             .await
         }
         Cmd::Corpus { op } => corpus_op(op).await,
+        Cmd::Eval {
+            queries,
+            index_path,
+            k,
+            report_path,
+            embedder,
+            model_path,
+            bm25,
+            rerank,
+            pre_rerank_k,
+            reranker_model_path,
+            reranker_model_id,
+        } => {
+            cmd_eval(
+                &queries,
+                &index_path,
+                k,
+                report_path.as_deref(),
+                embedder,
+                model_path.as_deref(),
+                bm25,
+                rerank,
+                pre_rerank_k,
+                reranker_model_path.as_deref(),
+                &reranker_model_id,
+            )
+            .await
+        }
     }
 }
 
@@ -489,6 +549,121 @@ async fn cmd_query(
         );
         println!();
     }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn cmd_eval(
+    queries_path: &Path,
+    index_path: &Path,
+    k: usize,
+    report_path: Option<&Path>,
+    embedder_kind: EmbedderKind,
+    model_path: Option<&Path>,
+    bm25_kind: Bm25Kind,
+    rerank_kind: RerankerKind,
+    pre_rerank_k: usize,
+    reranker_model_path: Option<&Path>,
+    reranker_model_id: &str,
+) -> anyhow::Result<()> {
+    use arkui_rag_eval::{load_queries, render_markdown, EvalConfig, Evaluator};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    if !index_path.exists() {
+        anyhow::bail!(
+            "索引文件不存在：{}（先跑 arkui-rag index）",
+            index_path.display()
+        );
+    }
+    if !queries_path.exists() {
+        anyhow::bail!(
+            "评估集不存在：{}（参考 corpus/_eval/queries.yaml 格式）",
+            queries_path.display()
+        );
+    }
+
+    // 构造检索流水线（复用 query 路径的逻辑）
+    let vector = Arc::new(InMemoryVectorStore::load_from(index_path).await?);
+    let dim = vector.dim();
+    let index_model_id = vector.embedder_model_id().to_string();
+    let (embedder, query_model_id, query_dim) =
+        build_embedder(embedder_kind, model_path, &index_model_id, dim).await?;
+    if query_model_id != index_model_id {
+        anyhow::bail!(
+            "embedder model_id 不匹配：索引 '{}' vs 评估 '{}'",
+            index_model_id,
+            query_model_id
+        );
+    }
+    if query_dim != dim {
+        anyhow::bail!("embedder dim 不匹配：{} vs {}", query_dim, dim);
+    }
+    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
+    let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
+    let rerank_name: String = reranker_opt
+        .as_ref()
+        .map(|(_, id)| id.clone())
+        .unwrap_or_else(|| "none".to_string());
+
+    let retriever: Arc<dyn arkui_rag_core::Retriever> =
+        Arc::new(HybridRetriever::new(embedder, vector, bm25));
+
+    let queries = load_queries(queries_path)?;
+    println!(
+        "📊 跑评估：{} 个 query · embedder={} · bm25={} · rerank={} · k={}",
+        queries.len(),
+        query_model_id,
+        bm25_name,
+        rerank_name,
+        k
+    );
+
+    let config = EvalConfig {
+        embedder: query_model_id.clone(),
+        bm25: bm25_name.to_string(),
+        rerank: rerank_name.clone(),
+        pre_rerank_k,
+        index_path: index_path.display().to_string(),
+        queries_path: queries_path.display().to_string(),
+    };
+    let mut evaluator = Evaluator::new(retriever)
+        .with_k(k)
+        .with_pre_rerank_k(pre_rerank_k)
+        .with_config(config);
+    if let Some((rr, _)) = reranker_opt {
+        evaluator = evaluator.with_reranker(rr);
+    }
+    let summary = evaluator.run(&queries).await?;
+
+    // 控制台 summary
+    println!();
+    println!("✅ 评估完成");
+    println!("   total queries  : {}", summary.total_queries);
+    println!("   avg recall@{}   : {:.3}", summary.k, summary.avg_recall_at_k);
+    println!("   avg MRR@{}      : {:.3}", summary.k, summary.avg_mrr_at_k);
+    println!("   avg latency    : {:.1} ms", summary.avg_latency_ms);
+    println!("   p50 latency    : {:.1} ms", summary.p50_latency_ms);
+    println!("   p99 latency    : {:.1} ms", summary.p99_latency_ms);
+
+    // 报告路径
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let default_report = format!(
+        "reports/eval-{}-{}-{}-{}-{}.md",
+        timestamp, query_model_id, bm25_name, rerank_name, k
+    );
+    let report_path = report_path
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| PathBuf::from(&default_report));
+    if let Some(parent) = report_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let md = render_markdown(&summary, &format!("unix-ts {}", timestamp));
+    std::fs::write(&report_path, md)?;
+    println!("   report saved   : {}", report_path.display());
+
     Ok(())
 }
 

@@ -1,6 +1,6 @@
 # rag4arkui-core
 
-> 状态：in-progress (Day 5 Reranker 真活 · Hybrid + Rerank 业界基线完整 · 规则 #17 生效)
+> 状态：in-progress (Day 6 检索质量可量化 · Eval-Driven 闭环就位 · 9 crate)
 > 创建：2026-05-27
 
 ## 用途
@@ -33,3 +33,4 @@
 - [7-2026-05-27-day4-bm25-tantivy.md](7-2026-05-27-day4-bm25-tantivy.md) — Day 4 BM25 / Tantivy 实装（HybridRetriever 真正双路 RRF 融合）· STATUS：`docs/STATUS-day4-bm25-tantivy.md`（追溯）
 - [8-2026-05-27-bootstrap-status-rule.md](8-2026-05-27-bootstrap-status-rule.md) — Bootstrap：立 AGENTS.md 规则 #17（每轮 STATUS 硬性）· STATUS：`docs/STATUS-bootstrap-status-rule.md`
 - [9-2026-05-27-day5-reranker.md](9-2026-05-27-day5-reranker.md) — Day 5 Reranker 真活（BGE-Reranker-v2 ONNX）· STATUS：`docs/STATUS-day5-reranker.md`
+- [10-2026-05-27-day6-eval.md](10-2026-05-27-day6-eval.md) — Day 6 检索质量评估（arkui-rag-eval crate · recall@k + MRR + 延迟）· STATUS：`docs/STATUS-day6-eval.md`

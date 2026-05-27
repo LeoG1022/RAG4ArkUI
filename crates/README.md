@@ -17,8 +17,9 @@
 | [`arkui-rag-chunker`](arkui-rag-chunker/) | 切分（含 frontmatter） | ✅ MarkdownChunker（含 YAML frontmatter） | §2.3 / §4.2 决策 6 |
 | [`arkui-rag-retrieval`](arkui-rag-retrieval/) | HybridRetriever + RRF + Rerank | ✅ HybridRetriever 真活；**Day 4 起 RRF 真正双路融合**；**Day 5 起 Reranker 接入（embedding crate 的 OnnxReranker）** | §1.4 / §2.4 |
 | [`arkui-rag-indexer`](arkui-rag-indexer/) | 索引流水线编排（Day 2 新增） | ✅ index_directory 真活 + 单测 + 端到端集成测试 | §9 图 5 / §9 图 2 |
+| [`arkui-rag-eval`](arkui-rag-eval/) | **检索质量评估（Day 6 新增）** | ✅ recall@k / MRR / 延迟 + markdown 报告 + 端到端集成测试 | §1.5 / §2.7 / §8.5 共识 4 |
 | [`arkui-rag-server`](arkui-rag-server/) | HTTP + MCP + LSP 协议 | ⏳ 路由 stub（Week 4） | §4.2 决策 2 / §9 图 8 |
-| [`arkui-rag-cli`](arkui-rag-cli/) | `arkui-rag` 二进制入口 | ✅ index/query 含 `--embedder mock\|onnx`、`--bm25 memory\|tantivy`、**`--rerank none\|mock\|onnx`（Day 5）**；serve stub | §5 / §9 图 8 |
+| [`arkui-rag-cli`](arkui-rag-cli/) | `arkui-rag` 二进制入口 | ✅ index/query/`--rerank`/`--bm25`（Day 5）+ **`eval` subcommand（Day 6）**；serve stub | §5 / §9 图 8 |
 
 ## 构建
 
@@ -83,6 +84,11 @@ cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli --features full -- 
 # 8. 一键全启（Day 3 + Day 4 + Day 5）= 业界标配 Hybrid + Rerank
 cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli --features full -- \
     index --source corpus --embedder onnx --model-path ~/.arkui-rag/models/bge-m3-onnx --bm25 tantivy
+
+# 9. 跑检索质量评估（Day 6）
+cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli -- \
+    eval --queries corpus/_eval/queries.yaml --k 5
+# 输出：reports/eval-<timestamp>-<config>.md，含 recall@k / MRR / latency
 ```
 
 模型获取见 [`arkui-rag-embedding/README.md`](arkui-rag-embedding/README.md#模型获取day-3-阶段手动--cli-提示)

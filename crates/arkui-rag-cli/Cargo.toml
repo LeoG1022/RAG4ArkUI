@@ -20,6 +20,7 @@ arkui-rag-chunker = { workspace = true }
 arkui-rag-embedding = { workspace = true }
 arkui-rag-storage = { workspace = true }
 arkui-rag-indexer = { workspace = true }
+arkui-rag-eval = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }

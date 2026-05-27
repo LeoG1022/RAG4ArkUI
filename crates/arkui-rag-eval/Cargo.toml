@@ -1,0 +1,27 @@
+[package]
+name = "arkui-rag-eval"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Retrieval quality evaluation: ground truth + recall@k / MRR / latency + markdown report"
+
+[dependencies]
+arkui-rag-core = { workspace = true }
+arkui-rag-retrieval = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3.13"
+arkui-rag-embedding = { workspace = true }
+arkui-rag-storage = { workspace = true }
+arkui-rag-chunker = { workspace = true }
+arkui-rag-indexer = { workspace = true }

@@ -11,6 +11,7 @@ members = [
     "arkui-rag-chunker",
     "arkui-rag-retrieval",
     "arkui-rag-indexer",
+    "arkui-rag-eval",
     "arkui-rag-server",
     "arkui-rag-cli",
 ]
@@ -65,6 +66,7 @@ arkui-rag-storage = { path = "arkui-rag-storage" }
 arkui-rag-chunker = { path = "arkui-rag-chunker" }
 arkui-rag-retrieval = { path = "arkui-rag-retrieval" }
 arkui-rag-indexer = { path = "arkui-rag-indexer" }
+arkui-rag-eval = { path = "arkui-rag-eval" }
 arkui-rag-server = { path = "arkui-rag-server" }
 
 [profile.release]

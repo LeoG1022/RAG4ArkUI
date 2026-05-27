@@ -1,0 +1,71 @@
+# RAG4ArkUI 评估集 (Day 6)
+#
+# 格式：YAML 数组，每项含
+#   id:        短标识，便于报告引用
+#   query:     用户输入文本（自然语言 / API 名 / 残缺代码 都可以）
+#   relevant:  ground truth chunk_id 列表（任一命中算召回成功）
+#   notes:     可选备注
+#
+# Chunk id 格式（MarkdownChunker 生成）：
+#   <source_relative_path>#<heading_path>@<start_line>
+#
+# 例：corpus/migration/list.md 里 "List > 下拉刷新" 节从第 10 行开始
+#     ⇒ "list.md#List/下拉刷新@10"（source 已相对 corpus/ 根）
+#
+# 扩展指南：
+#   1. 覆盖核心场景：路由 / 状态 / 列表 / 网络 / 一多 等每类至少 2 个 query
+#   2. 不同 query 风格：精确 API 名 / 自然语言 / 残缺代码 / 错误信息
+#   3. 多 GT 容忍：一个 query 可以标多个相关 chunk（OR 关系）
+#   4. 适度负样本：少量"应该 0 命中"的 query 防止过拟合
+#
+# 注意：sample 用的 chunk_id 假设你在 corpus/migration/ 下有对应文档；
+# 真实评估前请先 `arkui-rag index` 然后用 `arkui-rag query` 反查 chunk_id 校准。
+
+- id: q-routing-push
+  query: "ArkUI-X 怎么跳转到新页面？"
+  relevant:
+    # 占位 —— 用户投放 router 文档后用真实 chunk_id 替换
+    - "migration/router.md#Router/pushUrl@9"
+  notes: "自然语言场景查询"
+
+- id: q-routing-api
+  query: "router.pushUrl options 参数"
+  relevant:
+    - "migration/router.md#Router/pushUrl@9"
+  notes: "精确 API 名查询"
+
+- id: q-list-refresh
+  query: "下拉刷新 Refresh 组件"
+  relevant:
+    - "migration/list.md#List/下拉刷新@10"
+  notes: "关键词组合"
+
+- id: q-state-mgmt
+  query: "@State 装饰器怎么用"
+  relevant:
+    - "migration/state.md#State/装饰器@5"
+  notes: "装饰器场景"
+
+- id: q-kmp-migration
+  query: "ViewModelScope.launch 怎么改写成 ArkUI-X"
+  relevant:
+    - "migration/kmp-to-arkuix.md#KMP/launch@30"
+  notes: "迁移类查询（方案 §2.6 优先场景）"
+
+- id: q-error-fix
+  query: "@Component 装饰器导致编译错误"
+  relevant:
+    - "errors/component-decorator-error.md#fix@1"
+  notes: "错误修复场景（方案 §2.6 最易切入场景）"
+
+- id: q-negative-1
+  query: "完全无关的天气预报今天晴朗"
+  relevant: []
+  notes: "负样本 —— 期望 recall=0；若召回任何 chunk 说明检索器过敏"
+
+- id: q-multi-gt
+  query: "lazy 列表 + 父子滚动"
+  relevant:
+    - "migration/list.md#List/LazyForEach@45"
+    - "migration/list.md#List/nestedScroll@60"
+  notes: "多 GT —— 应至少命中其一才算合格"

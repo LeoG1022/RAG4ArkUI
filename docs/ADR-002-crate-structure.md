@@ -15,18 +15,19 @@
 
 ## Decision
 
-**8 个 crate**（Day 2 新增 `arkui-rag-indexer`），照搬完整方案图 3 类图边界：
+**9 个 crate**（Day 2 加 `arkui-rag-indexer`，Day 6 加 `arkui-rag-eval`），照搬完整方案图 3 类图边界：
 
 | Crate | 职责 | 关键依赖 |
 |---|---|---|
 | `arkui-rag-core` | trait + 类型 + Error（无任何后端） | thiserror、serde、async-trait |
-| `arkui-rag-embedding` | Embedder 实现（Mock + ONNX BGE-M3） | ort (feature `onnx`)、tokenizers、ndarray |
-| `arkui-rag-storage` | VectorStore + BM25Index + MetadataStore traits + In-Memory 实现 + **TantivyBM25Index (Day 4)** | (Week 2 续：lancedb) |
+| `arkui-rag-embedding` | Embedder + Reranker 实现（Mock + ONNX BGE-M3/BGE-Reranker） | ort (feature `onnx`)、tokenizers、ndarray |
+| `arkui-rag-storage` | VectorStore + BM25Index + MetadataStore traits + In-Memory + **TantivyBM25Index (Day 4)** | (Week 2 续：lancedb) |
 | `arkui-rag-chunker` | ASTChunker 实现（Markdown + frontmatter + tree-sitter） | serde_yaml；(Week 2: tree-sitter-typescript / kotlin / swift) |
 | `arkui-rag-retrieval` | HybridRetriever + RRF + CrossEncoderReranker | core + storage + embedding |
 | `arkui-rag-indexer` | 索引流水线编排（walk → chunk → embed → store） | core + chunker + embedding + storage + walkdir |
+| **`arkui-rag-eval` (Day 6)** | 检索质量评估：recall@k + MRR + 延迟 + markdown 报告 | core + retrieval + serde_yaml |
 | `arkui-rag-server` | HTTP + MCP + LSP 适配 | axum (feature `http`) / (mcp / lsp 待定) |
-| `arkui-rag-cli` | 二进制入口 `arkui-rag` | server + retrieval + chunker + embedding + storage + indexer |
+| `arkui-rag-cli` | 二进制入口 `arkui-rag` | 所有上游 crate |
 
 依赖图（单向）：
 ```
