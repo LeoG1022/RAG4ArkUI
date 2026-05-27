@@ -2,13 +2,40 @@
 
 **定位**：文本嵌入（文本 → 向量）。给索引和检索两路用。
 
-## 当前阶段提供的实现（Day 3）
+## 当前阶段提供的实现（Day 5）
+
+### Embedder
 
 | 实现 | feature 要求 | 用途 |
 |---|---|---|
 | `MockEmbedder` | 默认 | 开发期占位，返回确定性伪随机向量；让 cargo check 不依赖 ONNX |
 | `EmbeddingModel`（§7.2 verbatim） | `--features onnx` | 底层同步 ONNX 推理 API（直接迁移自方案文档） |
-| **`OnnxEmbedder`**（**Day 3 新增**） | `--features onnx` | 实现 `Embedder` trait 的 async wrapper，内部 `spawn_blocking` 桥接 |
+| `OnnxEmbedder`（Day 3 新增） | `--features onnx` | 实现 `Embedder` trait 的 async wrapper，内部 `spawn_blocking` 桥接 |
+
+### Reranker（Day 5 新增）
+
+| 实现 | feature 要求 | 用途 |
+|---|---|---|
+| `RerankerModel` | `--features onnx` | 底层同步 cross-encoder ONNX 推理（BGE-Reranker-v2-m3） |
+| **`OnnxReranker`** | `--features onnx` | 实现 `Reranker` trait 的 async wrapper |
+
+`OnnxReranker` 用法：
+
+```rust
+# #[cfg(feature = "onnx")]
+# tokio_test::block_on(async {
+use arkui_rag_core::Reranker;
+use arkui_rag_embedding::OnnxReranker;
+use std::path::Path;
+
+let rr = OnnxReranker::load(
+    Path::new("/Users/you/.arkui-rag/models/bge-reranker-v2-m3-onnx"),
+    "bge-reranker-v2-m3",
+).unwrap();
+// hits 来自 HybridRetriever
+let reranked = rr.rerank("query text", hits, 5).await.unwrap();
+# });
+```
 
 ## Feature gate 原由
 
@@ -66,6 +93,7 @@ CLI 的 `arkui-rag corpus model-pull` 目前还是 stub，但执行后会打印*
 # 1. 拉 BGE-M3
 git lfs install
 git clone https://huggingface.co/BAAI/bge-m3 ~/.arkui-rag/models/bge-m3
+git clone https://huggingface.co/BAAI/bge-reranker-v2-m3 ~/.arkui-rag/models/bge-reranker-v2-m3
 # 或国内镜像：
 git clone https://www.modelscope.cn/Xorbits/bge-m3.git ~/.arkui-rag/models/bge-m3
 
@@ -73,6 +101,8 @@ git clone https://www.modelscope.cn/Xorbits/bge-m3.git ~/.arkui-rag/models/bge-m
 pip install optimum[onnxruntime]
 optimum-cli export onnx --model ~/.arkui-rag/models/bge-m3 \
     --task feature-extraction --opset 17 ~/.arkui-rag/models/bge-m3-onnx
+optimum-cli export onnx --model ~/.arkui-rag/models/bge-reranker-v2-m3 \
+    --task text-classification --opset 17 ~/.arkui-rag/models/bge-reranker-v2-m3-onnx
 ```
 
 存放位置（约定）：`~/.arkui-rag/models/bge-m3-onnx/{model.onnx, tokenizer.json}`。

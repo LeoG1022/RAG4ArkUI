@@ -7,10 +7,10 @@
 //! vector 索引 (`<index-path-dir>/bm25/`) 并列存放。
 
 use arkui_rag_chunker::MarkdownChunker;
-use arkui_rag_core::{Citation, Embedder, EnhancedQuery, Retriever};
+use arkui_rag_core::{Citation, Embedder, EnhancedQuery, Reranker, Retriever};
 use arkui_rag_embedding::MockEmbedder;
 use arkui_rag_indexer::Indexer;
-use arkui_rag_retrieval::HybridRetriever;
+use arkui_rag_retrieval::{CrossEncoderReranker, HybridRetriever};
 use arkui_rag_storage::{BM25Index, InMemoryBM25Index, InMemoryVectorStore};
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::{Path, PathBuf};
@@ -34,6 +34,16 @@ enum Bm25Kind {
     Memory,
     /// Tantivy 真实 BM25 倒排检索（Day 4，需 --features tantivy）
     Tantivy,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum RerankerKind {
+    /// 不重排，直接用 HybridRetriever 输出（Day 2/3/4 默认）
+    None,
+    /// MockReranker：identity + truncate（占位，无实际重排）
+    Mock,
+    /// OnnxReranker：BGE-Reranker-v2 真实推理（Day 5，需 --features onnx + 本地模型）
+    Onnx,
 }
 
 #[derive(Parser, Debug)]
@@ -98,6 +108,18 @@ enum Cmd {
         /// BM25 后端：必须与建索引时一致
         #[arg(long, value_enum, default_value_t = Bm25Kind::Memory)]
         bm25: Bm25Kind,
+        /// Reranker 后端（Day 5）：none/mock/onnx
+        #[arg(long, value_enum, default_value_t = RerankerKind::None)]
+        rerank: RerankerKind,
+        /// Reranker 启用时检索器先取多大 Top-K 再精排（默认 50）
+        #[arg(long, default_value_t = 50)]
+        pre_rerank_k: usize,
+        /// Reranker 模型目录（onnx 必填）
+        #[arg(long)]
+        reranker_model_path: Option<PathBuf>,
+        /// Reranker 模型标识（onnx 默认 bge-reranker-v2-m3）
+        #[arg(long, default_value = "bge-reranker-v2-m3")]
+        reranker_model_id: String,
     },
     /// Corpus 管理
     Corpus {
@@ -173,7 +195,25 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             embedder,
             model_path,
             bm25,
-        } => cmd_query(&text, k, &index_path, embedder, model_path.as_deref(), bm25).await,
+            rerank,
+            pre_rerank_k,
+            reranker_model_path,
+            reranker_model_id,
+        } => {
+            cmd_query(
+                &text,
+                k,
+                &index_path,
+                embedder,
+                model_path.as_deref(),
+                bm25,
+                rerank,
+                pre_rerank_k,
+                reranker_model_path.as_deref(),
+                &reranker_model_id,
+            )
+            .await
+        }
         Cmd::Corpus { op } => corpus_op(op).await,
     }
 }
@@ -257,6 +297,50 @@ fn build_tantivy(_index_path: &Path) -> anyhow::Result<(Arc<dyn BM25Index>, &'st
     )
 }
 
+/// 构造 reranker 实例 + 模型 ID 名。None 时返回 None。
+fn build_reranker(
+    kind: RerankerKind,
+    model_path: Option<&Path>,
+    model_id: &str,
+) -> anyhow::Result<Option<(Arc<dyn Reranker>, String)>> {
+    match kind {
+        RerankerKind::None => Ok(None),
+        RerankerKind::Mock => {
+            let m = CrossEncoderReranker::default();
+            let id = m.model_id().to_string();
+            Ok(Some((Arc::new(m), id)))
+        }
+        RerankerKind::Onnx => build_onnx_reranker(model_path, model_id).map(Some),
+    }
+}
+
+#[cfg(feature = "onnx")]
+fn build_onnx_reranker(
+    model_path: Option<&Path>,
+    model_id: &str,
+) -> anyhow::Result<(Arc<dyn Reranker>, String)> {
+    use arkui_rag_embedding::OnnxReranker;
+    let path = model_path.ok_or_else(|| {
+        anyhow::anyhow!("--rerank onnx 必须配 --reranker-model-path <模型目录>")
+    })?;
+    let m = OnnxReranker::load(path, model_id)
+        .map_err(|e| anyhow::anyhow!("加载 Reranker ONNX 失败: {}", e))?;
+    let id = m.model_id().to_string();
+    Ok((Arc::new(m), id))
+}
+
+#[cfg(not(feature = "onnx"))]
+fn build_onnx_reranker(
+    _model_path: Option<&Path>,
+    _model_id: &str,
+) -> anyhow::Result<(Arc<dyn Reranker>, String)> {
+    anyhow::bail!(
+        "本二进制未启用 onnx feature。重新构建：\n\
+         \tcargo build -p arkui-rag-cli --features onnx --release\n\
+         （或 --features full 启用 onnx + tantivy）"
+    )
+}
+
 async fn cmd_index(
     source: &Path,
     index_path: &Path,
@@ -294,6 +378,7 @@ async fn cmd_index(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn cmd_query(
     text: &str,
     k: usize,
@@ -301,6 +386,10 @@ async fn cmd_query(
     kind: EmbedderKind,
     model_path: Option<&Path>,
     bm25_kind: Bm25Kind,
+    rerank_kind: RerankerKind,
+    pre_rerank_k: usize,
+    reranker_model_path: Option<&Path>,
+    reranker_model_id: &str,
 ) -> anyhow::Result<()> {
     if !index_path.exists() {
         anyhow::bail!(
@@ -337,25 +426,44 @@ async fn cmd_query(
         anyhow::bail!("embedder dim ({}) 与索引 dim ({}) 不匹配", query_dim, dim);
     }
     let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
+    let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
+    let rerank_name: String = reranker_opt
+        .as_ref()
+        .map(|(_, id)| id.clone())
+        .unwrap_or_else(|| "none".to_string());
 
     let retriever = HybridRetriever::new(embedder, vector, bm25);
     let q = EnhancedQuery::passthrough(text);
-    let hits = retriever.retrieve(&q, k).await?;
+
+    // 启用 reranker 时先取 pre_rerank_k 个候选送精排
+    let retrieve_k = if reranker_opt.is_some() {
+        pre_rerank_k.max(k)
+    } else {
+        k
+    };
+    let hits = retriever.retrieve(&q, retrieve_k).await?;
+    let hits = if let Some((rr, _id)) = reranker_opt {
+        rr.rerank(text, hits, k).await?
+    } else {
+        hits.into_iter().take(k).collect()
+    };
 
     if hits.is_empty() {
         println!(
-            "⚠️  无命中。索引文件：{}（bm25={}）",
+            "⚠️  无命中。索引文件：{}（bm25={} · rerank={}）",
             index_path.display(),
-            bm25_name
+            bm25_name,
+            rerank_name
         );
         return Ok(());
     }
 
     println!(
-        "✅ Top-{} hits (embedder={} · bm25={})",
+        "✅ Top-{} hits (embedder={} · bm25={} · rerank={})",
         hits.len(),
         query_model_id,
-        bm25_name
+        bm25_name,
+        rerank_name
     );
     println!();
     for (i, h) in hits.iter().enumerate() {

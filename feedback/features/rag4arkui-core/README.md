@@ -1,6 +1,6 @@
 # rag4arkui-core
 
-> 状态：in-progress (Day 4 真实 Hybrid + 规则 #17 立 · 每轮 agent 提交都强制 STATUS 快照)
+> 状态：in-progress (Day 5 Reranker 真活 · Hybrid + Rerank 业界基线完整 · 规则 #17 生效)
 > 创建：2026-05-27
 
 ## 用途
@@ -32,3 +32,4 @@
 - [6-2026-05-27-day3-ci.md](6-2026-05-27-day3-ci.md) — Day 3.5 GitHub Actions CI（check / test / clippy / fmt / smoke + onnx 手动）
 - [7-2026-05-27-day4-bm25-tantivy.md](7-2026-05-27-day4-bm25-tantivy.md) — Day 4 BM25 / Tantivy 实装（HybridRetriever 真正双路 RRF 融合）· STATUS：`docs/STATUS-day4-bm25-tantivy.md`（追溯）
 - [8-2026-05-27-bootstrap-status-rule.md](8-2026-05-27-bootstrap-status-rule.md) — Bootstrap：立 AGENTS.md 规则 #17（每轮 STATUS 硬性）· STATUS：`docs/STATUS-bootstrap-status-rule.md`
+- [9-2026-05-27-day5-reranker.md](9-2026-05-27-day5-reranker.md) — Day 5 Reranker 真活（BGE-Reranker-v2 ONNX）· STATUS：`docs/STATUS-day5-reranker.md`
