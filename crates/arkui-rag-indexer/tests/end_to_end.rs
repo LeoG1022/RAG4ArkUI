@@ -1,12 +1,19 @@
 //! 端到端集成测试：模拟 CLI 的 index → save → load → query 闭环。
 
-use arkui_rag_chunker::MarkdownChunker;
-use arkui_rag_core::{EnhancedQuery, Retriever};
+use arkui_rag_chunker::{ChunkerDispatcher, MarkdownChunker};
+use arkui_rag_core::{chunker::SourceLang, EnhancedQuery, Retriever};
 use arkui_rag_embedding::MockEmbedder;
 use arkui_rag_indexer::Indexer;
 use arkui_rag_retrieval::HybridRetriever;
 use arkui_rag_storage::{InMemoryBM25Index, InMemoryVectorStore};
 use std::sync::Arc;
+
+fn dispatcher_markdown() -> Arc<ChunkerDispatcher> {
+    Arc::new(
+        ChunkerDispatcher::new()
+            .register(SourceLang::Markdown, Arc::new(MarkdownChunker::new())),
+    )
+}
 
 #[tokio::test]
 async fn index_save_load_query_roundtrip() {
@@ -33,9 +40,8 @@ async fn index_save_load_query_roundtrip() {
     let embedder = Arc::new(MockEmbedder::new(dim));
     let vector = Arc::new(InMemoryVectorStore::new("mock-64", dim));
     let bm25 = Arc::new(InMemoryBM25Index);
-    let chunker = Arc::new(MarkdownChunker::new());
 
-    let indexer = Indexer::new(chunker, embedder.clone(), vector.clone(), bm25.clone());
+    let indexer = Indexer::new(dispatcher_markdown(), embedder.clone(), vector.clone(), bm25.clone());
     let stats = indexer.index_directory(&corpus).await.unwrap();
     assert_eq!(stats.files, 2);
     assert!(stats.chunks >= 3, "expected ≥3 chunks, got {}", stats.chunks);
@@ -95,9 +101,8 @@ async fn platform_filter_works_end_to_end() {
     let embedder = Arc::new(MockEmbedder::new(32));
     let vector = Arc::new(InMemoryVectorStore::new("mock-32", 32));
     let bm25 = Arc::new(InMemoryBM25Index);
-    let chunker = Arc::new(MarkdownChunker::new());
 
-    Indexer::new(chunker, embedder.clone(), vector.clone(), bm25.clone())
+    Indexer::new(dispatcher_markdown(), embedder.clone(), vector.clone(), bm25.clone())
         .index_directory(&corpus)
         .await
         .unwrap();

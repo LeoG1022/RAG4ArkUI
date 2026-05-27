@@ -33,5 +33,9 @@ default = []
 onnx = ["arkui-rag-embedding/onnx"]
 # 启用后 index/query 可选 --bm25 tantivy，转发 arkui-rag-storage/tantivy
 tantivy = ["arkui-rag-storage/tantivy"]
-# 一键开全（onnx + tantivy）
-full = ["onnx", "tantivy"]
+# Day 10：启用后 indexer 自动识别 .ets / .ts / .tsx 并切分
+typescript = ["arkui-rag-chunker/typescript"]
+kotlin = ["arkui-rag-chunker/kotlin"]
+swift = ["arkui-rag-chunker/swift"]
+# 一键开全（向量 + BM25 + 全语言）
+full = ["onnx", "tantivy", "typescript", "kotlin", "swift"]

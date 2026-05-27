@@ -2,18 +2,18 @@
 
 > **文档定位**：项目长期维护文档（类似 ADR / README），跨阶段全景视图。
 > **维护约定**：每个 Day 完成 commit 后，agent **同步更新本文档的进度标记**（不单独 commit）；新阶段补充进度行；不在本文档归档单次 round 的细节（那些去 STATUS-<slug>.md）。
-> **最后更新**：Day 7 完成（2026-05-27 · commit pending · HyDE 改写器）
+> **最后更新**：Day 10 完成（2026-05-27 · commit pending · tree-sitter 代码切分）
 
 ---
 
 ## 📍 当前位置
 
-**Day 7 完成 · HyDE 改写器接入 · QueryEnhancer trait + MockHyde 真活**
+**Day 10 完成 · tree-sitter ArkTS/TS 代码切分真活 · ChunkerDispatcher 多语言路由就位**
 
-- 9 个 Cargo crate
-- 37 个测试（默认 features · +1 PassthroughEnhancer + 6 MockHyde）+ onnx/tantivy feature 扩展可达 47 个
-- 6 个 STATUS 文档（规则 #17 生效后强制配套）
-- 13 个 git commit / 历史 6 个工作 Day
+- 9 个 Cargo crate（chunker 大重构）
+- 默认 features 测试约 43 个 + typescript feature +7 + onnx/tantivy 扩展可达 57 个
+- 7 个 STATUS 文档（规则 #17 生效后强制配套）
+- 14 个 git commit / 历史 7 个工作 Day
 
 ---
 
@@ -38,16 +38,16 @@ gantt
     规则 #17 STATUS-PER-ROUND       :done,    bsr, after d4, 1d
     OnnxReranker 真活                :done,    d5, after bsr, 1d
     检索质量评估                     :done,    d6, after d5, 2d
-    HyDE 改写器 (当前)               :active,  d7, after d6, 1d
+    HyDE 改写器                      :done,    d7, after d6, 1d
+    tree-sitter (代码切分 · 当前)    :active,  d10, after d7, 2d
 
     section ⏳ Week 2 末
-    tantivy-jieba 中文升级           :         d8, after d7, 1d
+    tantivy-jieba 中文升级           :         d8, after d10, 1d
     Parent-Child 父子索引            :         d11, after d8, 1d
 
     section ⏳ Week 3 (规模化 + 流水线)
     LanceDB 替换 InMemory           :         d9, after d11, 2d
-    tree-sitter (.ets/.kt/.swift)    :         d10, after d9, 2d
-    Query Router + Intent           :         d12, after d10, 1d
+    Query Router + Intent           :         d12, after d9, 1d
     ContextAssembler 真活            :         d13, after d12, 1d
 
     section ⏳ Week 4 (协议层)
@@ -84,7 +84,8 @@ gantt
 | `331f180` | 5 | 9 | **OnnxReranker 真活** → Hybrid + Rerank 业界基线 | [STATUS-day5](STATUS-day5-reranker.md) |
 | `44d6233` | 6 | 10 | 检索质量评估闭环（arkui-rag-eval crate） | [STATUS-day6](STATUS-day6-eval.md) |
 | `0228109` | — | 11 | ROADMAP 全景图归档 | [STATUS-roadmap](STATUS-roadmap-doc.md) |
-| _(本 commit)_ | **7 (当前)** | **12** | **HyDE 改写器**（QueryEnhancer trait + MockHyde · CLI --hyde） | [STATUS-day7](STATUS-day7-hyde.md) |
+| `6969cba` | 7 | 12 | HyDE 改写器（QueryEnhancer trait + MockHyde） | [STATUS-day7](STATUS-day7-hyde.md) |
+| _(本 commit)_ | **10 (当前)** | **13** | **tree-sitter ArkTS/TS 代码切分** + ChunkerDispatcher 路由 + Indexer 重构 | [STATUS-day10](STATUS-day10-tree-sitter.md) |
 
 ---
 
@@ -98,12 +99,12 @@ gantt
 | 8 推荐 | tantivy-jieba 中文分词 | 中文 BM25 精度从 ngram 升级；评估集可量化提升 | 0.5 commit | Day 4 ✓ |
 | 11 | Parent-Child 父子索引 | 检索小、返回大（方案 §1.4 标准） | 1 commit | Day 6 ✓ |
 
-### 🟡 Week 3 · 规模化 + 流水线收尾（4 个切片）
+### 🟡 Week 3 · 规模化 + 流水线收尾（3 个切片，Day 10 已完成）
 
 | Day | 切片 | 价值 | 工作量 |
 |---|---|---|---|
 | 9 | **LanceDB** 替换 InMemoryVectorStore | 解锁 chunks > 10k 大规模 corpus | 1-2 commit |
-| **10 关键** | **tree-sitter (.ets/.kt/.swift)** | 代码 corpus 真活（非常关键，方案 §2.3） | 2 commit |
+| ~~10~~ | ~~tree-sitter (.ets/.kt/.swift)~~ | ✅ **Day 10 完成**（ArkTS 真活 · Kotlin/Swift stub） | — |
 | 12 | Query Router + Intent 分类 | 不同 query 走不同流水线（方案 §1.2） | 1 commit |
 | 13 | ContextAssembler 真活 | 父 chunk 扩展 + 引用元数据完善 | 1 commit |
 
@@ -157,14 +158,14 @@ gantt
 
 | 方案章节里程碑 | 状态 | 完成度 |
 |---|---|---|
-| Week 1: Rust 骨架 + tree-sitter + LanceDB + Tantivy + BGE-M3 | **6/7** ✅ | tree-sitter ⏳ + LanceDB ⏳ |
+| Week 1: Rust 骨架 + tree-sitter + LanceDB + Tantivy + BGE-M3 | **6.5/7** ✅ | tree-sitter ArkTS ✅（Kotlin/Swift stub）· LanceDB ⏳ |
 | Week 2: 混合检索 + Reranker + HyDE + 评估集 | **4/4** ✅ | 全部达成 |
 | Week 3: HTTP + MCP + CLI | **1/3** ✅ | HTTP/MCP ⏳ |
 | Week 4: IDE 插件 (DevEco/IntelliJ) | **0/2** ⏳ | — |
 | Week 5: Claude Code 接入 | **0/1** ⏳ | — |
 | Week 6: 自动安装 + corpus 分发 + 文档 + 评估报告 | **1/4** ✅ | 评估报告 ✓ |
 
-**当前完成度估算：~40%**（Week 2 全部达成 · Hybrid + Rerank + Eval + HyDE 完整闭环）。
+**当前完成度估算：~45%**（Week 2 全部达成 · 代码 corpus 解锁 · 9 crate 接口稳定）。
 
 ---
 
@@ -187,13 +188,14 @@ gantt
 | 里程碑 | 累计 commit | 累计 round |
 |---|---|---|
 | ✅ Hybrid + Rerank + Eval 基线 | 12 | 11 |
-| ✅ Week 2 全部达成（+ HyDE · **当前位置**） | 13 | 12 |
-| 完整检索能力（tree-sitter + Parent-Child） | +3 | 15 |
+| ✅ Week 2 全部达成（+ HyDE） | 13 | 12 |
+| ✅ 代码 corpus 真活（tree-sitter ArkTS · **当前位置**） | 14 | 13 |
+| 完整检索能力（LanceDB + Parent-Child + Query Router） | +4 | 17 |
 | 协议层完整（HTTP + MCP + LSP） | +12 | 28 |
 | 首个 IDE 插件 MVP（DevEco） | +8 | 36 |
 | 公开 release 1.0 | +5 | 41 |
 
-**估算**：从当前 Round 12 → 完整 MVP 1.0，约还需 **30+ commit** / **4 周**。
+**估算**：从当前 Round 13 → 完整 MVP 1.0，约还需 **28+ commit** / **4 周**。
 
 ---
 
@@ -202,9 +204,9 @@ gantt
 ```
 Day 6 评估闭环 ✓
    ↓
-Day 7 HyDE ✓（当前已达成）
+Day 7 HyDE ✓
    ↓
-Day 10 tree-sitter（代码 corpus 解锁）
+Day 10 tree-sitter ✓（代码 corpus 解锁 · 当前已达成）
    ↓
 Day 14 HTTP Server
    ↓

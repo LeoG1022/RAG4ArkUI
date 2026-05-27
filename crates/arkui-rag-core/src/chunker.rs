@@ -8,7 +8,7 @@ use crate::error::Result;
 use async_trait::async_trait;
 
 /// 切分器输入语言 / 格式。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SourceLang {
     Markdown,
     ArkTs,

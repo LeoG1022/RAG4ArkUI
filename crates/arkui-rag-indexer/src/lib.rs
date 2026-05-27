@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
-use arkui_rag_core::{chunker::SourceLang, ASTChunker, Chunk, Embedder, RagError, Result};
+use arkui_rag_chunker::ChunkerDispatcher;
+use arkui_rag_core::{chunker::SourceLang, Chunk, Embedder, RagError, Result};
 use arkui_rag_storage::{BM25Index, VectorStore};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -19,8 +20,9 @@ pub struct IndexStats {
 }
 
 /// 索引流水线编排器。所有后端通过 trait object 注入，便于切换。
+/// Day 10 起：chunker 改为 `Arc<ChunkerDispatcher>` 支持多语言路由。
 pub struct Indexer {
-    chunker: Arc<dyn ASTChunker>,
+    dispatcher: Arc<ChunkerDispatcher>,
     embedder: Arc<dyn Embedder>,
     vector: Arc<dyn VectorStore>,
     bm25: Arc<dyn BM25Index>,
@@ -29,13 +31,13 @@ pub struct Indexer {
 
 impl Indexer {
     pub fn new(
-        chunker: Arc<dyn ASTChunker>,
+        dispatcher: Arc<ChunkerDispatcher>,
         embedder: Arc<dyn Embedder>,
         vector: Arc<dyn VectorStore>,
         bm25: Arc<dyn BM25Index>,
     ) -> Self {
         Self {
-            chunker,
+            dispatcher,
             embedder,
             vector,
             bm25,
@@ -52,7 +54,7 @@ impl Indexer {
     ///
     /// 行为：
     /// 1. 递归遍历 `source`（跳过 `_index/`、隐藏目录、`.gitkeep`）
-    /// 2. 按扩展名分发 chunker —— Day 2 只处理 `.md`，其他文件计入 skipped
+    /// 2. 按扩展名走 `ChunkerDispatcher`，未注册的 lang 计入 skipped
     /// 3. 批量 embed → upsert vector + bm25
     pub async fn index_directory(&self, source: &Path) -> Result<IndexStats> {
         let start = Instant::now();
@@ -68,19 +70,16 @@ impl Indexer {
         let mut buffered_chunks: Vec<Chunk> = Vec::new();
 
         for path in files {
-            let ext = path
-                .extension()
-                .and_then(|s| s.to_str())
-                .unwrap_or("")
-                .to_lowercase();
-            let lang = match ext.as_str() {
-                "md" | "markdown" => SourceLang::Markdown,
-                _ => {
-                    stats.skipped += 1;
-                    tracing::debug!("skip {} (ext={})", path.display(), ext);
-                    continue;
-                }
-            };
+            let lang = ChunkerDispatcher::detect_lang(&path);
+            if matches!(lang, SourceLang::Auto) || !self.dispatcher.has(lang) {
+                stats.skipped += 1;
+                tracing::debug!(
+                    "skip {} (lang={:?}; not registered)",
+                    path.display(),
+                    lang
+                );
+                continue;
+            }
 
             let content = tokio::fs::read_to_string(&path).await?;
             let rel = path
@@ -88,7 +87,16 @@ impl Indexer {
                 .unwrap_or(&path)
                 .to_string_lossy()
                 .to_string();
-            let chunks = self.chunker.chunk(&rel, &content, lang).await?;
+            let chunks_result = self.dispatcher.chunk_as(&rel, &content, lang).await;
+            let chunks = match chunks_result {
+                Ok(c) => c,
+                Err(RagError::NotImplemented(msg)) => {
+                    tracing::warn!("skip {} (chunker NotImplemented: {})", rel, msg);
+                    stats.skipped += 1;
+                    continue;
+                }
+                Err(e) => return Err(e),
+            };
             if chunks.is_empty() {
                 tracing::warn!("chunker produced 0 chunks for {}", rel);
                 continue;
@@ -153,9 +161,16 @@ fn walk_corpus(source: &Path) -> Vec<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arkui_rag_chunker::MarkdownChunker;
+    use arkui_rag_chunker::{ChunkerDispatcher, MarkdownChunker};
     use arkui_rag_embedding::MockEmbedder;
     use arkui_rag_storage::{InMemoryBM25Index, InMemoryVectorStore};
+
+    fn dispatcher_markdown_only() -> Arc<ChunkerDispatcher> {
+        Arc::new(
+            ChunkerDispatcher::new()
+                .register(SourceLang::Markdown, Arc::new(MarkdownChunker::new())),
+        )
+    }
 
     #[tokio::test]
     async fn index_two_markdown_files() {
@@ -178,13 +193,33 @@ mod tests {
         let embedder = Arc::new(MockEmbedder::new(64));
         let vector = Arc::new(InMemoryVectorStore::new("mock-64", 64));
         let bm25 = Arc::new(InMemoryBM25Index);
-        let chunker = Arc::new(MarkdownChunker::new());
 
-        let indexer = Indexer::new(chunker, embedder, vector.clone(), bm25);
+        let indexer = Indexer::new(dispatcher_markdown_only(), embedder, vector.clone(), bm25);
         let stats = indexer.index_directory(dir.path()).await.unwrap();
         assert_eq!(stats.files, 2);
         assert_eq!(stats.chunks, 3); // A1 + A2 + B1
         assert_eq!(stats.skipped, 1); // ignored.kt
         assert_eq!(vector.len().await.unwrap(), 3);
+    }
+
+    #[tokio::test]
+    async fn ets_files_skipped_when_no_ts_chunker_registered() {
+        // 默认 dispatcher 只注册 Markdown，.ets 文件应被 skipped
+        let dir = tempfile::tempdir().unwrap();
+        tokio::fs::write(dir.path().join("a.ets"), "@Component struct A {}")
+            .await
+            .unwrap();
+        tokio::fs::write(dir.path().join("b.md"), "# Top\n\nbody\n")
+            .await
+            .unwrap();
+
+        let embedder = Arc::new(MockEmbedder::new(32));
+        let vector = Arc::new(InMemoryVectorStore::new("mock-32", 32));
+        let bm25 = Arc::new(InMemoryBM25Index);
+
+        let indexer = Indexer::new(dispatcher_markdown_only(), embedder, vector.clone(), bm25);
+        let stats = indexer.index_directory(dir.path()).await.unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.skipped, 1);
     }
 }

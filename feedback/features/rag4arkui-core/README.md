@@ -1,6 +1,6 @@
 # rag4arkui-core
 
-> 状态：in-progress (Day 7 HyDE 接入 · **Week 2 全部达成** · Advanced RAG 4 件套完整)
+> 状态：in-progress (Day 10 tree-sitter 真活 · 代码 corpus 解锁 · 9 crate · API 第一次破坏性升级)
 > 创建：2026-05-27
 
 ## 用途
@@ -36,3 +36,4 @@
 - [10-2026-05-27-day6-eval.md](10-2026-05-27-day6-eval.md) — Day 6 检索质量评估（arkui-rag-eval crate · recall@k + MRR + 延迟）· STATUS：`docs/STATUS-day6-eval.md`
 - [11-2026-05-27-roadmap-doc.md](11-2026-05-27-roadmap-doc.md) — ROADMAP 全景图归档到 docs/ · STATUS：`docs/STATUS-roadmap-doc.md`
 - [12-2026-05-27-day7-hyde.md](12-2026-05-27-day7-hyde.md) — Day 7 HyDE 改写器（QueryEnhancer + MockHyde · CLI --hyde · Week 2 全部达成 ⭐）· STATUS：`docs/STATUS-day7-hyde.md`
+- [13-2026-05-27-day10-tree-sitter.md](13-2026-05-27-day10-tree-sitter.md) — Day 10 tree-sitter 代码切分（TypeScriptChunker · ChunkerDispatcher · Indexer 重构 · 代码 corpus 真活）· STATUS：`docs/STATUS-day10-tree-sitter.md`

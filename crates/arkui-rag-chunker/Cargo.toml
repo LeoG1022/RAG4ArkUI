@@ -15,8 +15,21 @@ async-trait = { workspace = true }
 serde = { workspace = true }
 serde_yaml = { workspace = true }
 tokio = { workspace = true }
+tracing = { workspace = true }
+tree-sitter = { workspace = true, optional = true }
+tree-sitter-typescript = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
 default = []
-# Week 2 起：启用 tree-sitter（ArkTS / Kotlin / Swift）
-tree-sitter = []
+# Day 10: tree-sitter 代码切分（必须）
+treesitter = ["dep:tree-sitter"]
+# Day 10: ArkTS + TypeScript（依赖 treesitter）
+typescript = ["treesitter", "dep:tree-sitter-typescript"]
+# Backlog: Kotlin / Swift（tree-sitter-kotlin / tree-sitter-swift 接入待定）
+kotlin = ["treesitter"]
+swift = ["treesitter"]
+# 一键全启
+all-langs = ["typescript", "kotlin", "swift"]

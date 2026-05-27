@@ -14,9 +14,9 @@
 | [`arkui-rag-core`](arkui-rag-core/) | 公共 trait + 类型 + Error | ✅ trait/类型完成 | §4.1 引擎层 / §9 图 3 |
 | [`arkui-rag-embedding`](arkui-rag-embedding/) | BGE-M3 ONNX 编码器 | ✅ Mock + §7.2 + **OnnxEmbedder async wrapper (Day 3)** | §6 / §7.2 |
 | [`arkui-rag-storage`](arkui-rag-storage/) | 存储后端 + InMemory 实现 | ✅ trait + InMemoryVectorStore/BM25 + JSON 持久化 + **TantivyBM25Index (Day 4 · feature `tantivy`)** | §4.2 决策 4 |
-| [`arkui-rag-chunker`](arkui-rag-chunker/) | 切分（含 frontmatter） | ✅ MarkdownChunker（含 YAML frontmatter） | §2.3 / §4.2 决策 6 |
+| [`arkui-rag-chunker`](arkui-rag-chunker/) | 切分（含 frontmatter）+ Dispatcher | ✅ MarkdownChunker · **TypeScriptChunker（ArkTS · Day 10 · feature `typescript`）** · Kotlin/Swift stub · ChunkerDispatcher 按扩展名路由 | §2.3 / §4.2 决策 6 |
 | [`arkui-rag-retrieval`](arkui-rag-retrieval/) | HybridRetriever + RRF + Rerank | ✅ HybridRetriever 真活；**Day 4 起 RRF 真正双路融合**；**Day 5 起 Reranker 接入（embedding crate 的 OnnxReranker）** | §1.4 / §2.4 |
-| [`arkui-rag-indexer`](arkui-rag-indexer/) | 索引流水线编排（Day 2 新增） | ✅ index_directory 真活 + 单测 + 端到端集成测试 | §9 图 5 / §9 图 2 |
+| [`arkui-rag-indexer`](arkui-rag-indexer/) | 索引流水线编排 | ✅ index_directory 真活 · **Day 10 起接 ChunkerDispatcher 支持多语言路由** · 端到端集成测试 | §9 图 5 / §9 图 2 |
 | [`arkui-rag-eval`](arkui-rag-eval/) | **检索质量评估（Day 6 新增）** | ✅ recall@k / MRR / 延迟 + markdown 报告 + 端到端集成测试 | §1.5 / §2.7 / §8.5 共识 4 |
 | [`arkui-rag-server`](arkui-rag-server/) | HTTP + MCP + LSP 协议 | ⏳ 路由 stub（Week 4） | §4.2 决策 2 / §9 图 8 |
 | [`arkui-rag-cli`](arkui-rag-cli/) | `arkui-rag` 二进制入口 | ✅ index/query/`--rerank`/`--bm25`（Day 5）+ **`eval` subcommand（Day 6）**；serve stub | §5 / §9 图 8 |

@@ -55,6 +55,10 @@ tokenizers = { version = "0.20", default-features = false, features = ["onig"] }
 # BM25 倒排索引（storage crate 的 tantivy feature 用）
 tantivy = "0.22"
 
+# tree-sitter 代码切分（chunker crate 的 treesitter / typescript / kotlin / swift feature 用）
+tree-sitter = "0.22"
+tree-sitter-typescript = "0.21"
+
 # HTTP server（server crate 用）
 axum = "0.8"
 tower = "0.5"

@@ -6,9 +6,10 @@
 //! 索引产物校验 `embedder_model_id` 防止"用不同 embedder 查老索引"；BM25 索引目录与
 //! vector 索引 (`<index-path-dir>/bm25/`) 并列存放。
 
-use arkui_rag_chunker::MarkdownChunker;
+use arkui_rag_chunker::{ChunkerDispatcher, MarkdownChunker};
 use arkui_rag_core::{
-    Citation, Embedder, PassthroughEnhancer, QueryEnhancer, Reranker, Retriever,
+    chunker::SourceLang, Citation, Embedder, PassthroughEnhancer, QueryEnhancer, Reranker,
+    Retriever,
 };
 use arkui_rag_embedding::MockEmbedder;
 use arkui_rag_indexer::Indexer;
@@ -306,6 +307,33 @@ fn build_enhancer(kind: HydeKind) -> (Arc<dyn QueryEnhancer>, &'static str) {
     }
 }
 
+/// 构造 ChunkerDispatcher（Day 10）。
+/// 默认含 Markdown；启用 typescript feature 自动注册 ArkTS/TS chunker。
+fn build_dispatcher() -> Arc<ChunkerDispatcher> {
+    let mut d = ChunkerDispatcher::new()
+        .register(SourceLang::Markdown, Arc::new(MarkdownChunker::new()));
+
+    #[cfg(feature = "typescript")]
+    {
+        use arkui_rag_chunker::TypeScriptChunker;
+        d = d.register(
+            SourceLang::ArkTs,
+            Arc::new(TypeScriptChunker::new(SourceLang::ArkTs)),
+        );
+    }
+    #[cfg(feature = "kotlin")]
+    {
+        use arkui_rag_chunker::KotlinChunker;
+        d = d.register(SourceLang::Kotlin, Arc::new(KotlinChunker::new()));
+    }
+    #[cfg(feature = "swift")]
+    {
+        use arkui_rag_chunker::SwiftChunker;
+        d = d.register(SourceLang::Swift, Arc::new(SwiftChunker::new()));
+    }
+    Arc::new(d)
+}
+
 /// 构造 embedder 实例 + 报告 (model_id, dim)。
 async fn build_embedder(
     kind: EmbedderKind,
@@ -445,9 +473,9 @@ async fn cmd_index(
         build_embedder(kind, model_path, model_id, mock_dim).await?;
     let vector = Arc::new(InMemoryVectorStore::new(model_id_used.clone(), dim));
     let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
-    let chunker = Arc::new(MarkdownChunker::new());
+    let dispatcher = build_dispatcher();
 
-    let indexer = Indexer::new(chunker, embedder, vector.clone(), bm25);
+    let indexer = Indexer::new(dispatcher, embedder, vector.clone(), bm25);
     let stats = indexer.index_directory(source).await?;
     vector.save_to(index_path).await?;
 

@@ -1,6 +1,7 @@
 //! 端到端集成测试：完整的 index → eval 闭环。
 
-use arkui_rag_chunker::MarkdownChunker;
+use arkui_rag_chunker::{ChunkerDispatcher, MarkdownChunker};
+use arkui_rag_core::chunker::SourceLang;
 use arkui_rag_embedding::MockEmbedder;
 use arkui_rag_eval::{load_queries, render_markdown, EvalConfig, Evaluator};
 use arkui_rag_indexer::Indexer;
@@ -32,8 +33,11 @@ async fn full_index_then_eval() {
     let embedder = Arc::new(MockEmbedder::new(64));
     let vector = Arc::new(InMemoryVectorStore::new("mock-64", 64));
     let bm25 = Arc::new(InMemoryBM25Index);
-    let chunker = Arc::new(MarkdownChunker::new());
-    Indexer::new(chunker, embedder.clone(), vector.clone(), bm25.clone())
+    let dispatcher = Arc::new(
+        ChunkerDispatcher::new()
+            .register(SourceLang::Markdown, Arc::new(MarkdownChunker::new())),
+    );
+    Indexer::new(dispatcher, embedder.clone(), vector.clone(), bm25.clone())
         .index_directory(&corpus)
         .await
         .unwrap();
