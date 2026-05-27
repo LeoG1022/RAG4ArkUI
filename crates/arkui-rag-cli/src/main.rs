@@ -1,30 +1,37 @@
 //! arkui-rag 二进制入口。
 //!
-//! Day 2：`index` 与 `query` 端到端真实可用（用 MockEmbedder + InMemoryVectorStore）。
-//! 索引持久化到 `corpus/_index/index.json`，让 index 和 query 跨进程共享。
+//! Day 3：`--embedder onnx --model-path <dir>` 启用真实 BGE-M3 推理（需 `--features onnx`）。
+//! 默认 `--embedder mock` 保持 Day 2 行为（无依赖 demo）。
+//! 索引产物校验 `embedder_model_id` 防止"用不同 embedder 查老索引"。
 
 use arkui_rag_chunker::MarkdownChunker;
-use arkui_rag_core::{Citation, EnhancedQuery, Retriever};
+use arkui_rag_core::{Citation, Embedder, EnhancedQuery, Retriever};
 use arkui_rag_embedding::MockEmbedder;
 use arkui_rag_indexer::Indexer;
 use arkui_rag_retrieval::HybridRetriever;
 use arkui_rag_storage::{InMemoryBM25Index, InMemoryVectorStore};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-/// 默认 Mock embedding 维度（Day 2 占位；Week 2 起换 BGE-M3 = 1024）。
 const DEFAULT_MOCK_DIM: usize = 384;
-/// 索引产物默认路径。
 const DEFAULT_INDEX_PATH: &str = "corpus/_index/index.json";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum EmbedderKind {
+    /// MockEmbedder：哈希派生确定性向量，零依赖，Day 2 默认
+    Mock,
+    /// OnnxEmbedder：真实 BGE-M3 / Qwen3 推理，需 --features onnx + 本地模型
+    Onnx,
+}
 
 #[derive(Parser, Debug)]
 #[command(
     name = "arkui-rag",
     version,
     about = "本地 RAG 引擎 for ArkUI-X / OpenHarmony",
-    long_about = "完整方案见 docs/RAG4ArkUI-完整技术方案.md"
+    long_about = "完整方案见 docs/RAG4ArkUI-完整技术方案.md；当前阶段见 docs/STATUS-day*.md"
 )]
 struct Cli {
     #[command(subcommand)]
@@ -44,13 +51,20 @@ enum Cmd {
     },
     /// 对指定目录建索引
     Index {
-        /// 待索引的目录（默认 corpus/）
         #[arg(long, default_value = "corpus")]
         source: PathBuf,
-        /// 索引产物保存路径
         #[arg(long, default_value = DEFAULT_INDEX_PATH)]
         index_path: PathBuf,
-        /// Mock embedding 维度
+        /// embedder 类型
+        #[arg(long, value_enum, default_value_t = EmbedderKind::Mock)]
+        embedder: EmbedderKind,
+        /// onnx embedder 需要：模型目录（含 model.onnx 和 tokenizer.json）
+        #[arg(long)]
+        model_path: Option<PathBuf>,
+        /// onnx embedder 需要：模型标识（如 bge-m3 / qwen3-embedding-0.6b）
+        #[arg(long, default_value = "bge-m3")]
+        model_id: String,
+        /// mock 模式下的向量维度（onnx 模式忽略，从模型读）
         #[arg(long, default_value_t = DEFAULT_MOCK_DIM)]
         dim: usize,
     },
@@ -60,9 +74,14 @@ enum Cmd {
         text: String,
         #[arg(short, long, default_value_t = 5)]
         k: usize,
-        /// 索引产物路径
         #[arg(long, default_value = DEFAULT_INDEX_PATH)]
         index_path: PathBuf,
+        /// embedder 类型；必须与建索引时一致（否则 model_id 校验报错）
+        #[arg(long, value_enum, default_value_t = EmbedderKind::Mock)]
+        embedder: EmbedderKind,
+        /// onnx embedder 需要的模型目录
+        #[arg(long)]
+        model_path: Option<PathBuf>,
     },
     /// Corpus 管理
     Corpus {
@@ -75,7 +94,7 @@ enum Cmd {
 enum CorpusOp {
     /// 列出 corpus/ 下的子目录与文档数
     List,
-    /// 拉取 / 更新本地模型（BGE-M3 等）—— Week 2 实装
+    /// 拉取 / 更新本地模型 —— Week 2-3 backlog（真实下载）
     ModelPull {
         #[arg(long)]
         name: String,
@@ -107,38 +126,88 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             if !http && !mcp && !lsp {
                 anyhow::bail!("必须指定至少一个协议：--http / --mcp / --lsp");
             }
-            println!(
-                "arkui-rag serve (stub) — http={} mcp={} lsp={}",
-                http, mcp, lsp
-            );
-            println!("⏳ Week 4 backlog：协议路由实际监听（见 docs/RAG4ArkUI-完整技术方案.md §4.4 / §9 图 8）");
+            println!("arkui-rag serve (stub) — http={} mcp={} lsp={}", http, mcp, lsp);
+            println!("⏳ Week 4 backlog：协议路由实际监听（见 docs/RAG4ArkUI-完整技术方案.md §4.4）");
             Ok(())
         }
         Cmd::Index {
             source,
             index_path,
+            embedder,
+            model_path,
+            model_id,
             dim,
-        } => cmd_index(&source, &index_path, dim).await,
+        } => cmd_index(&source, &index_path, embedder, model_path.as_deref(), &model_id, dim).await,
         Cmd::Query {
             text,
             k,
             index_path,
-        } => cmd_query(&text, k, &index_path).await,
+            embedder,
+            model_path,
+        } => cmd_query(&text, k, &index_path, embedder, model_path.as_deref()).await,
         Cmd::Corpus { op } => corpus_op(op).await,
     }
+}
+
+/// 构造 embedder 实例 + 报告 (model_id, dim)。
+async fn build_embedder(
+    kind: EmbedderKind,
+    model_path: Option<&std::path::Path>,
+    model_id: &str,
+    mock_dim: usize,
+) -> anyhow::Result<(Arc<dyn Embedder>, String, usize)> {
+    match kind {
+        EmbedderKind::Mock => {
+            let m = MockEmbedder::new(mock_dim);
+            let id = m.model_id().to_string();
+            let dim = m.dim();
+            Ok((Arc::new(m), id, dim))
+        }
+        EmbedderKind::Onnx => build_onnx(model_path, model_id),
+    }
+}
+
+#[cfg(feature = "onnx")]
+fn build_onnx(
+    model_path: Option<&std::path::Path>,
+    model_id: &str,
+) -> anyhow::Result<(Arc<dyn Embedder>, String, usize)> {
+    use arkui_rag_embedding::OnnxEmbedder;
+    let path = model_path.ok_or_else(|| {
+        anyhow::anyhow!("--embedder onnx 必须配 --model-path <模型目录>")
+    })?;
+    let m = OnnxEmbedder::load(path, model_id)
+        .map_err(|e| anyhow::anyhow!("加载 ONNX 模型失败: {}", e))?;
+    let id = m.model_id().to_string();
+    let dim = m.dim();
+    Ok((Arc::new(m), id, dim))
+}
+
+#[cfg(not(feature = "onnx"))]
+fn build_onnx(
+    _model_path: Option<&std::path::Path>,
+    _model_id: &str,
+) -> anyhow::Result<(Arc<dyn Embedder>, String, usize)> {
+    anyhow::bail!(
+        "本二进制未启用 onnx feature。重新构建：\n\
+         \tcargo build -p arkui-rag-cli --features onnx --release"
+    )
 }
 
 async fn cmd_index(
     source: &std::path::Path,
     index_path: &std::path::Path,
-    dim: usize,
+    kind: EmbedderKind,
+    model_path: Option<&std::path::Path>,
+    model_id: &str,
+    mock_dim: usize,
 ) -> anyhow::Result<()> {
     if !source.exists() {
         anyhow::bail!("源目录不存在：{}", source.display());
     }
-    let model_id = format!("mock-{}", dim);
-    let embedder = Arc::new(MockEmbedder::new(dim));
-    let vector = Arc::new(InMemoryVectorStore::new(model_id.clone(), dim));
+    let (embedder, model_id_used, dim) =
+        build_embedder(kind, model_path, model_id, mock_dim).await?;
+    let vector = Arc::new(InMemoryVectorStore::new(model_id_used.clone(), dim));
     let bm25 = Arc::new(InMemoryBM25Index);
     let chunker = Arc::new(MarkdownChunker::new());
 
@@ -148,6 +217,7 @@ async fn cmd_index(
 
     println!("✅ 索引完成");
     println!("   embedder    : {}", stats.embedder_model_id);
+    println!("   dim         : {}", dim);
     println!("   files       : {}", stats.files);
     println!("   chunks      : {}", stats.chunks);
     println!("   skipped     : {}", stats.skipped);
@@ -156,7 +226,13 @@ async fn cmd_index(
     Ok(())
 }
 
-async fn cmd_query(text: &str, k: usize, index_path: &std::path::Path) -> anyhow::Result<()> {
+async fn cmd_query(
+    text: &str,
+    k: usize,
+    index_path: &std::path::Path,
+    kind: EmbedderKind,
+    model_path: Option<&std::path::Path>,
+) -> anyhow::Result<()> {
     if !index_path.exists() {
         anyhow::bail!(
             "索引文件不存在：{}（先跑 arkui-rag index 建索引）",
@@ -165,15 +241,31 @@ async fn cmd_query(text: &str, k: usize, index_path: &std::path::Path) -> anyhow
     }
     let vector = Arc::new(InMemoryVectorStore::load_from(index_path).await?);
     let dim = vector.dim();
-    let model_id = vector.embedder_model_id().to_string();
-    let embedder = Arc::new(MockEmbedder::new(dim));
-    if embedder.dim() != dim {
+    let index_model_id = vector.embedder_model_id().to_string();
+
+    let (embedder, query_model_id, query_dim) =
+        build_embedder(kind, model_path, &index_model_id, dim).await?;
+
+    // 防错配：索引时的 model_id 必须与查询时一致
+    if query_model_id != index_model_id {
         anyhow::bail!(
-            "embedder dim ({}) 与索引 dim ({}) 不匹配；索引由 {} 创建",
-            embedder.dim(),
-            dim,
-            model_id
+            "embedder model_id 不匹配：索引由 '{}' 建，查询用 '{}'。\n\
+             重建索引：arkui-rag index --embedder {} {} ...",
+            index_model_id,
+            query_model_id,
+            match kind {
+                EmbedderKind::Mock => "mock",
+                EmbedderKind::Onnx => "onnx",
+            },
+            if matches!(kind, EmbedderKind::Onnx) {
+                "--model-path <PATH>"
+            } else {
+                ""
+            }
         );
+    }
+    if query_dim != dim {
+        anyhow::bail!("embedder dim ({}) 与索引 dim ({}) 不匹配", query_dim, dim);
     }
     let bm25 = Arc::new(InMemoryBM25Index);
 
@@ -186,7 +278,7 @@ async fn cmd_query(text: &str, k: usize, index_path: &std::path::Path) -> anyhow
         return Ok(());
     }
 
-    println!("✅ Top-{} hits (using {})", hits.len(), model_id);
+    println!("✅ Top-{} hits (using {})", hits.len(), query_model_id);
     println!();
     for (i, h) in hits.iter().enumerate() {
         let citation = Citation::from(h);
@@ -202,10 +294,13 @@ async fn cmd_query(text: &str, k: usize, index_path: &std::path::Path) -> anyhow
         println!("─── [{}] score={:.4} ──────────────────", i + 1, h.score);
         println!("  source : {} {}", citation.source, lines);
         println!("  heading: {}", head);
-        // 内容预览：前 200 字符
         let preview: String = h.chunk.content.chars().take(200).collect();
         let preview = preview.replace('\n', " ");
-        println!("  preview: {}{}", preview, if h.chunk.content.len() > 200 { "…" } else { "" });
+        println!(
+            "  preview: {}{}",
+            preview,
+            if h.chunk.content.len() > 200 { "…" } else { "" }
+        );
         println!();
     }
     Ok(())
@@ -236,7 +331,19 @@ async fn corpus_op(op: CorpusOp) -> anyhow::Result<()> {
         }
         CorpusOp::ModelPull { name } => {
             println!("arkui-rag corpus model-pull --name {} (stub)", name);
-            println!("⏳ Week 2 backlog：从 HuggingFace / ModelScope 拉模型到 ~/.arkui-rag/models/");
+            println!("⏳ Week 2-3 backlog：从 HuggingFace / ModelScope 拉模型到 ~/.arkui-rag/models/");
+            println!();
+            println!("当前手动获取方式：");
+            println!("  # BGE-M3");
+            println!("  git lfs install");
+            println!("  git clone https://huggingface.co/BAAI/bge-m3 ~/.arkui-rag/models/bge-m3");
+            println!("  # 或国内镜像：");
+            println!("  git clone https://www.modelscope.cn/Xorbits/bge-m3.git ~/.arkui-rag/models/bge-m3");
+            println!();
+            println!("  之后导出 ONNX（一次性）：");
+            println!("  pip install optimum[onnxruntime]");
+            println!("  optimum-cli export onnx --model ~/.arkui-rag/models/bge-m3 \\");
+            println!("      --task feature-extraction --opset 17 ~/.arkui-rag/models/bge-m3-onnx");
             Ok(())
         }
     }

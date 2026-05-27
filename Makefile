@@ -5,7 +5,7 @@
 CARGO ?= cargo
 CRATES_DIR := crates
 
-.PHONY: help install-rust check check-onnx build test fmt clippy clean corpus-init smoke
+.PHONY: help install-rust check check-onnx build build-onnx test fmt clippy clean corpus-init smoke
 
 help:
 	@echo "RAG4ArkUI — 可用 target"
@@ -13,6 +13,7 @@ help:
 	@echo "  make check          cargo check --workspace（默认 features，不含 ONNX）"
 	@echo "  make check-onnx     cargo check -p arkui-rag-embedding --features onnx"
 	@echo "  make build          cargo build --workspace --release"
+	@echo "  make build-onnx     cargo build -p arkui-rag-cli --features onnx --release (Day 3)"
 	@echo "  make test           cargo test --workspace"
 	@echo "  make smoke          端到端冒烟：index + query 真实跑通（用 /tmp 临时 corpus）"
 	@echo "  make fmt            cargo fmt --all"
@@ -37,6 +38,9 @@ check-onnx: install-rust
 
 build: install-rust
 	cd $(CRATES_DIR) && $(CARGO) build --workspace --release
+
+build-onnx: install-rust
+	cd $(CRATES_DIR) && $(CARGO) build -p arkui-rag-cli --features onnx --release
 
 test: install-rust
 	cd $(CRATES_DIR) && $(CARGO) test --workspace

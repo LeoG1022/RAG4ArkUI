@@ -12,13 +12,13 @@
 | Crate | 定位 | 当前状态 | 对应方案章节 |
 |---|---|---|---|
 | [`arkui-rag-core`](arkui-rag-core/) | 公共 trait + 类型 + Error | ✅ trait/类型完成 | §4.1 引擎层 / §9 图 3 |
-| [`arkui-rag-embedding`](arkui-rag-embedding/) | BGE-M3 ONNX 编码器 | ✅ §7.2 代码 + Mock | §6 / §7.2 |
+| [`arkui-rag-embedding`](arkui-rag-embedding/) | BGE-M3 ONNX 编码器 | ✅ Mock + §7.2 + **OnnxEmbedder async wrapper (Day 3)** | §6 / §7.2 |
 | [`arkui-rag-storage`](arkui-rag-storage/) | 存储后端 + InMemory 实现 | ✅ trait + InMemoryVectorStore/BM25 + JSON 持久化 | §4.2 决策 4 |
 | [`arkui-rag-chunker`](arkui-rag-chunker/) | 切分（含 frontmatter） | ✅ MarkdownChunker（含 YAML frontmatter） | §2.3 / §4.2 决策 6 |
 | [`arkui-rag-retrieval`](arkui-rag-retrieval/) | HybridRetriever + RRF + Rerank | ✅ HybridRetriever 真活；Reranker 仍 stub | §1.4 / §2.4 |
 | [`arkui-rag-indexer`](arkui-rag-indexer/) | 索引流水线编排（Day 2 新增） | ✅ index_directory 真活 + 单测 + 端到端集成测试 | §9 图 5 / §9 图 2 |
 | [`arkui-rag-server`](arkui-rag-server/) | HTTP + MCP + LSP 协议 | ⏳ 路由 stub（Week 4） | §4.2 决策 2 / §9 图 8 |
-| [`arkui-rag-cli`](arkui-rag-cli/) | `arkui-rag` 二进制入口 | ✅ index/query/corpus 真活；serve stub | §5 / §9 图 8 |
+| [`arkui-rag-cli`](arkui-rag-cli/) | `arkui-rag` 二进制入口 | ✅ index/query 含 **--embedder mock\|onnx**（Day 3）；serve stub | §5 / §9 图 8 |
 
 ## 构建
 
@@ -56,10 +56,19 @@ cargo run -p arkui-rag-cli -- --version
 # 3. 看 corpus 子目录状态
 cargo run -p arkui-rag-cli -- corpus list
 
-# 4. 端到端 demo（需要 corpus/ 下先放 markdown，参考 corpus/README.md）
+# 4. 端到端 demo（Mock 模式，无依赖）
 cd ..
 cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli -- index --source corpus
 cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli -- query --text "如何下拉刷新" --k 3
+
+# 5. 真实 ONNX 模式（Day 3，需先获取模型 + onnx feature）
+cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli --features onnx -- \
+    index --source corpus --embedder onnx --model-path ~/.arkui-rag/models/bge-m3-onnx --model-id bge-m3
+cargo run --manifest-path crates/Cargo.toml -p arkui-rag-cli --features onnx -- \
+    query --text "下拉刷新" --k 3 --embedder onnx --model-path ~/.arkui-rag/models/bge-m3-onnx
 ```
 
-`serve` 仍是 stub（Week 4 实装协议层）。`model-pull` 仍是 stub（Week 2 接 HuggingFace 下载）。
+模型获取见 [`arkui-rag-embedding/README.md`](arkui-rag-embedding/README.md#模型获取day-3-阶段手动--cli-提示)
+或跑 `arkui-rag corpus model-pull --name bge-m3` 看完整步骤。
+
+`serve` 仍是 stub（Week 4 实装协议层）。`model-pull` 真实下载是 Week 2-3 backlog。

@@ -25,3 +25,8 @@ clap = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+[features]
+default = []
+# 启用后 index/query 可选 --embedder onnx --model-path ...，转发 arkui-rag-embedding/onnx
+onnx = ["arkui-rag-embedding/onnx"]

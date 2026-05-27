@@ -1,6 +1,6 @@
 # rag4arkui-core
 
-> 状态：in-progress (Day 2 端到端 Mock Demo 可跑)
+> 状态：in-progress (Day 3 OnnxEmbedder async wrapper 就绪 · 真实语义检索接口可用)
 > 创建：2026-05-27
 
 ## 用途
@@ -28,3 +28,4 @@
 - [2-2026-05-27-day2-mock-demo.md](2-2026-05-27-day2-mock-demo.md) — Day 2 端到端 Mock Demo（indexer + 持久化 + frontmatter + HybridRetriever 真活）
 - [3-2026-05-27-day2-status-doc.md](3-2026-05-27-day2-status-doc.md) — Day 2 阶段快照文档（架构图 + 输入/输出 + 验证手段）
 - [4-2026-05-27-day2-smoke.md](4-2026-05-27-day2-smoke.md) — Day 2.5 demo smoke 脚本（端到端 CLI 二进制行为验证）
+- [5-2026-05-27-day3-onnx-embedder.md](5-2026-05-27-day3-onnx-embedder.md) — Day 3 OnnxEmbedder async wrapper + CLI --embedder onnx 真实语义检索上线

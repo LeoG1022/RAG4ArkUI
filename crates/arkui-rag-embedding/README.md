@@ -2,12 +2,13 @@
 
 **定位**：文本嵌入（文本 → 向量）。给索引和检索两路用。
 
-## Day 1 提供的实现
+## 当前阶段提供的实现（Day 3）
 
 | 实现 | feature 要求 | 用途 |
 |---|---|---|
 | `MockEmbedder` | 默认 | 开发期占位，返回确定性伪随机向量；让 cargo check 不依赖 ONNX |
-| `OnnxEmbedder`（§7.2 verbatim） | `--features onnx` | 真实 BGE-M3 推理 |
+| `EmbeddingModel`（§7.2 verbatim） | `--features onnx` | 底层同步 ONNX 推理 API（直接迁移自方案文档） |
+| **`OnnxEmbedder`**（**Day 3 新增**） | `--features onnx` | 实现 `Embedder` trait 的 async wrapper，内部 `spawn_blocking` 桥接 |
 
 ## Feature gate 原由
 
@@ -26,12 +27,13 @@ assert_eq!(v.len(), 1024);
 # });
 ```
 
-## 用法（ONNX，Week 2 起）
+## 用法（ONNX，Day 3 起 trait 实现就绪）
 
+**底层同步 API**（`EmbeddingModel`）：
 ```rust
 # #[cfg(feature = "onnx")]
 # {
-use arkui_rag_embedding::onnx::EmbeddingModel;
+use arkui_rag_embedding::EmbeddingModel;
 use std::path::Path;
 
 let m = EmbeddingModel::load(Path::new("/Users/you/.arkui-rag/models/bge-m3")).unwrap();
@@ -39,14 +41,39 @@ let arr = m.encode(&["query 1", "query 2"]).unwrap();  // ndarray::Array2<f32>
 # }
 ```
 
-注意：`OnnxEmbedder` 当前是技术方案 §7.2 verbatim 的同步 API，**尚未**包装为 `Embedder` trait 的 async 实现 —— 这是 Week 2 的 backlog 项（用 `tokio::task::spawn_blocking` 桥接）。
+**Async trait 实现**（`OnnxEmbedder`，推荐）：
+```rust
+# #[cfg(feature = "onnx")]
+# tokio_test::block_on(async {
+use arkui_rag_core::Embedder;
+use arkui_rag_embedding::OnnxEmbedder;
+use std::path::Path;
 
-## 模型获取
-
-模型不在仓库里，首次运行靠 CLI 拉取：
-
-```bash
-arkui-rag corpus model-pull --name bge-m3   # TODO Week 2 实现
+let emb = OnnxEmbedder::load(Path::new("/Users/you/.arkui-rag/models/bge-m3"), "bge-m3").unwrap();
+let v = emb.encode_single("ArkUI-X 下拉刷新").await.unwrap();
+assert_eq!(v.len(), emb.dim());
+# });
 ```
 
-存放位置（约定）：`~/.arkui-rag/models/bge-m3/{model.onnx, tokenizer.json}`。
+`OnnxEmbedder` 内部用 `tokio::task::spawn_blocking` 把同步推理移到 blocking 线程池，
+不会阻塞 tokio runtime 的 worker；与上层 `HybridRetriever`、`Indexer` 无缝集成。
+
+## 模型获取（Day 3 阶段：手动 + CLI 提示）
+
+CLI 的 `arkui-rag corpus model-pull` 目前还是 stub，但执行后会打印**完整的手动获取步骤**：
+
+```bash
+# 1. 拉 BGE-M3
+git lfs install
+git clone https://huggingface.co/BAAI/bge-m3 ~/.arkui-rag/models/bge-m3
+# 或国内镜像：
+git clone https://www.modelscope.cn/Xorbits/bge-m3.git ~/.arkui-rag/models/bge-m3
+
+# 2. 导出 ONNX（一次性）
+pip install optimum[onnxruntime]
+optimum-cli export onnx --model ~/.arkui-rag/models/bge-m3 \
+    --task feature-extraction --opset 17 ~/.arkui-rag/models/bge-m3-onnx
+```
+
+存放位置（约定）：`~/.arkui-rag/models/bge-m3-onnx/{model.onnx, tokenizer.json}`。
+真实下载实装是 Week 2-3 backlog。
