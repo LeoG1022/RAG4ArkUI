@@ -1,0 +1,27 @@
+[package]
+name = "arkui-rag-embedding"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "ONNX-based text embedding (BGE-M3 / Qwen3) + Mock for dev"
+
+[dependencies]
+arkui-rag-core = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+
+# ONNX 重依赖 —— 默认不拉，靠 feature "onnx" 触发
+ort = { workspace = true, optional = true }
+tokenizers = { workspace = true, optional = true }
+ndarray = { workspace = true, optional = true }
+
+[features]
+default = []
+# 启用此 feature 后编译 BGE-M3 ONNX 真实推理代码（§7.2）。
+# 首次 cargo check 会拉 ORT 原生库（~300MB），耗时 5-10 分钟。
+onnx = ["dep:ort", "dep:tokenizers", "dep:ndarray"]

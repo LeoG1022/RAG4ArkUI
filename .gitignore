@@ -38,3 +38,16 @@ temp/
 
 # stats: tokens.jsonl is tracked (agent appends after each commit)
 # stats/summaries/ is tracked (auto-generated summaries)
+
+# Rust (RAG4ArkUI)
+/crates/target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# RAG runtime artifacts (索引 / 模型 / 序列化文件)
+/corpus/_index/
+/models/
+*.onnx
+*.tokenizer.json
+*.lance
+*.tantivy

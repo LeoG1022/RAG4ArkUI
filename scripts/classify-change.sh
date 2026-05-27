@@ -53,6 +53,8 @@ classify() {
     # ── 使用者按项目结构修改以下业务路径 ──────────────────────────────────
     # 示例：workspace/*|output/*|reports/*|src/*
     reports/*|stats/*) echo business ;;
+    # RAG4ArkUI 产品代码与文档
+    crates/*|corpus/*|docs/*) echo business ;;
     # ─────────────────────────────────────────────────────────────────────
     *) echo unknown ;;
   esac

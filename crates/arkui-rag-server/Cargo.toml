@@ -1,0 +1,28 @@
+[package]
+name = "arkui-rag-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Protocol adapters: HTTP / MCP / LSP. Wraps the RAG engine."
+
+[dependencies]
+arkui-rag-core = { workspace = true }
+arkui-rag-retrieval = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+axum = { workspace = true, optional = true }
+tower = { workspace = true, optional = true }
+
+[features]
+default = []
+# Week 4 起：启用三套协议
+http = ["dep:axum", "dep:tower"]
+mcp = []
+lsp = []

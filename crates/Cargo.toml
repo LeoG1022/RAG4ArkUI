@@ -1,0 +1,72 @@
+# RAG4ArkUI Cargo workspace 根
+# 7 个 crate 的边界与定位见 docs/ADR-002-crate-structure.md
+# 完整技术方案见 docs/RAG4ArkUI-完整技术方案.md
+
+[workspace]
+resolver = "2"
+members = [
+    "arkui-rag-core",
+    "arkui-rag-embedding",
+    "arkui-rag-storage",
+    "arkui-rag-chunker",
+    "arkui-rag-retrieval",
+    "arkui-rag-server",
+    "arkui-rag-cli",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+authors = ["RAG4ArkUI Contributors"]
+repository = "https://github.com/keerecles/RAG4ArkUI"
+rust-version = "1.75"
+
+# 全 workspace 共享依赖版本（避免重复定义、保证 crate 间一致）
+[workspace.dependencies]
+# 错误与异步
+anyhow = "1.0"
+thiserror = "2.0"
+async-trait = "0.1"
+tokio = { version = "1.42", features = ["macros", "rt-multi-thread", "sync", "fs", "io-util"] }
+
+# 序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# 日志 / tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# 数值计算（embedding 用）
+ndarray = "0.16"
+
+# ONNX 推理（embedding crate 的 `onnx` feature 启用）
+ort = { version = "2.0.0-rc.4", default-features = false, features = ["load-dynamic", "ndarray"] }
+tokenizers = { version = "0.20", default-features = false, features = ["onig"] }
+
+# HTTP server（server crate 用）
+axum = "0.8"
+tower = "0.5"
+
+# 内部 crate（路径依赖）
+arkui-rag-core = { path = "arkui-rag-core" }
+arkui-rag-embedding = { path = "arkui-rag-embedding" }
+arkui-rag-storage = { path = "arkui-rag-storage" }
+arkui-rag-chunker = { path = "arkui-rag-chunker" }
+arkui-rag-retrieval = { path = "arkui-rag-retrieval" }
+arkui-rag-server = { path = "arkui-rag-server" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+
+[profile.dev]
+opt-level = 0
+debug = true

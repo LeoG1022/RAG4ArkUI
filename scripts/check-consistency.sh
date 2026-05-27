@@ -567,7 +567,9 @@ if [[ -f "$MARKER" ]]; then
   UNVERIFIED=0
   CHECKED=0
   for i in 0 1 2 3 4; do
-    HASH=$(git rev-parse HEAD~$i 2>/dev/null || break)
+    # 用 --verify --quiet 让 git 在 ref 不存在时返回非零且不打印字面量；
+    # `|| break` 放在赋值外面才能真正跳出 for 循环（在 $() 内 break 仅退出子 shell）。
+    HASH=$(git rev-parse --verify --quiet "HEAD~$i" 2>/dev/null) || break
     CHECKED=$((CHECKED + 1))
     if ! grep -q "$HASH" "$MARKER" 2>/dev/null; then
       UNVERIFIED=$((UNVERIFIED + 1))

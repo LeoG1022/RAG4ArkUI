@@ -1,4 +1,46 @@
-# Agent Harness Template
+# RAG4ArkUI
+
+> 面向 OpenHarmony / ArkUI-X 的本地化 RAG 代码生成与迁移系统。
+
+## 项目愿景
+
+`RAG4ArkUI` 是一套**纯本地**的检索引擎，专门服务 ArkUI-X / OpenHarmony 开发场景。完整规约见 [`docs/RAG4ArkUI-完整技术方案.md`](docs/RAG4ArkUI-完整技术方案.md)。三大差异化护城河：
+
+- **领域语料**：官方文档 + 代码示例 + 迁移规则 + XDB 错误回流
+- **本地化部署**：单 Rust 二进制 + ONNX Runtime + LanceDB / Tantivy，零云依赖
+- **协议统一**：MCP（Claude Code / Cursor）+ HTTP（IDE 插件）+ LSP，同一二进制四种形态
+
+## 当前状态：Day 1 骨架
+
+仓库目前处于 **Cargo workspace 骨架阶段**：
+- `crates/` 7 个 crate 的接口契约就位（trait + 类型 + stub）
+- `crates/arkui-rag-embedding` 已带 §7.2 的完整 BGE-M3 ONNX 代码（feature-gated）
+- `corpus/` 5 个子目录待用户投放文档
+- 3 份 ADR + 完整的 feature log 归档
+
+距离 MVP 还有 5 周（详见技术方案附录 A.2 路线图）。
+
+## 快速开始
+
+```bash
+make install-rust            # 检查 / 提示安装 rust 工具链
+make check                   # cargo check --workspace（默认 features，不含 ONNX）
+make check-onnx              # 启用 onnx feature 后编译 embedding crate（首次较慢）
+make corpus-init             # 确保 corpus/ 子目录存在
+```
+
+更多入口见 [`Makefile`](Makefile) 与 [`crates/README.md`](crates/README.md)。
+
+---
+
+# Agent Harness Template (本仓库基础设施)
+
+本仓库同时是一个 **AI-agent 协作基础设施模板**——所有写操作（包括上面 RAG4ArkUI 产品代码）必须通过 agent harness 的归档与校验流程。完整规约：
+
+- 用户视角 → 继续阅读本文件
+- AI agent 入口 → [`AGENTS.md`](AGENTS.md)
+- Claude Code SOP → [`CLAUDE.md`](CLAUDE.md)
+- 新 agent 入门 → [`ONBOARDING.md`](ONBOARDING.md)
 
 A reusable AI-agent collaboration infrastructure template. Clone it, run one command, and your project gains a full AI-agent operating framework with:
 

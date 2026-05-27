@@ -1,0 +1,21 @@
+[package]
+name = "arkui-rag-chunker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "AST / Markdown chunkers (tree-sitter integration deferred to Week 2)"
+
+[dependencies]
+arkui-rag-core = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+
+[features]
+default = []
+# Week 2 起：启用 tree-sitter（ArkTS / Kotlin / Swift）
+tree-sitter = []

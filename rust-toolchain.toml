@@ -1,0 +1,6 @@
+# 锁定 Rust 工具链版本与组件。
+# 改动需经 ADR-001 评估（docs/ADR-001-language-choice.md）。
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+profile = "default"

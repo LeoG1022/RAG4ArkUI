@@ -1,0 +1,19 @@
+[package]
+name = "arkui-rag-retrieval"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "HybridRetriever (vector + BM25) + RRF fusion + CrossEncoderReranker"
+
+[dependencies]
+arkui-rag-core = { workspace = true }
+arkui-rag-storage = { workspace = true }
+arkui-rag-embedding = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
