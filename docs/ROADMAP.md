@@ -8,13 +8,14 @@
 
 ## 📍 当前位置
 
-**Day 20a 完成 · 本地 host release artifact 真活 · 端到端 CLI 可下载即用 ⭐**
+**Day 20b 完成 · 4 平台 CI matrix 自动 release · tag `v*` 触发 GitHub Releases 自动上传 ⭐**
 
 - 9 个 Cargo crate · **HTTP + MCP + LSP 三协议全部真活**
-- `dist/arkui-rag-v0.0.1-<host-triple>.tar.gz` 2.9 MB 压缩 · 6.7 MB binary · macOS 仅依赖 libSystem
-- `make release-local-verify` 端到端通过（cargo build → 打包 → 解压 → query 验证）
-- 14 个 STATUS 文档（规则 #17 生效后强制配套）
-- 21 个 git commit / 历史 14 个工作 Day
+- 本地 + CI 双路径分发：`make release-local`（本地 host）+ `.github/workflows/release.yml`（4 平台 matrix）
+- 4 平台目标：aarch64/x86_64 darwin · x86_64 linux gnu · x86_64 windows msvc
+- 触发：`git tag v0.0.2 && git push --tags` · CI 5-15 分钟产出 Release page + 4 个 tarball + SHA256SUMS
+- 15 个 STATUS 文档（规则 #17 生效后强制配套）
+- 22 个 git commit / 历史 15 个工作 Day
 
 ---
 
@@ -73,7 +74,7 @@ gantt
 
 ---
 
-## ✅ 已完成（21 commits）
+## ✅ 已完成（22 commits）
 
 | Commit | Day | Round | 内容 | STATUS |
 |---|---|---|---|---|
@@ -97,7 +98,8 @@ gantt
 | `f4724cc` | 15 | 17 | MCP Server（JSON-RPC stdio · 4 tools · Claude Code 接入就绪） | [STATUS-day15](STATUS-day15-mcp.md) |
 | `865c463` | 19 | 18 | Claude Code 接入验证（接入指南 10 节 + bash 端到端 demo · Week 5 1/1 ⭐） | [STATUS-day19](STATUS-day19-claude-code.md) |
 | `611cdcb` | 16 | 19 | LSP Server（手撸 Content-Length framing + 5 method + custom commands · 协议层 3/3 完整 ⭐） + 11 pre-existing 编译缺陷清理 | [STATUS-day16](STATUS-day16-lsp.md) |
-| _(本 commit)_ | **20a (当前)** | **20** | **本地 host release artifact**（`scripts/release-local.sh` + Makefile + `docs/RELEASE.md` · 端到端 CLI 可下载即用 ⭐） | [STATUS-day20a](STATUS-day20a-release-local.md) |
+| `197e894` | 20a | 20 | 本地 host release artifact（`scripts/release-local.sh` + Makefile + `docs/RELEASE.md` · 端到端 CLI 可下载即用 ⭐） | [STATUS-day20a](STATUS-day20a-release-local.md) |
+| _(本 commit)_ | **20b (当前)** | **21** | **CI matrix release**（`.github/workflows/release.yml` · 4 平台 build · tag `v*` 触发 · GitHub Releases 自动上传 ⭐） | [STATUS-day20b](STATUS-day20b-ci-matrix.md) |
 
 ---
 
@@ -140,8 +142,8 @@ gantt
 
 | Day | 切片 | 价值 | 工作量 |
 |---|---|---|---|
-| **20a** ✅ | **本地 host release artifact**（aarch64-apple-darwin · `scripts/release-local.sh` + Makefile） | 端到端 CLI 可下载即用 | ✅ 1 commit（本轮） |
-| 20b | CI matrix（darwin-x64/arm64 + linux + win） + GitHub Releases 自动上传 | 多平台分发 | 1 commit |
+| **20a** ✅ | **本地 host release artifact**（aarch64-apple-darwin · `scripts/release-local.sh` + Makefile） | 端到端 CLI 可下载即用 | ✅ 1 commit |
+| **20b** ✅ | **CI matrix 4 平台**（darwin arm64/x86_64 + linux + win） + GitHub Releases 自动上传（tag `v*` 触发） | 多平台分发自动化 | ✅ 1 commit（本轮） |
 | 21 | `corpus model-pull` 真实下载 + corpus 分发 | 用户无脑接入 | 2 commit |
 | 22 | 文档站点 (mdBook) + release 1.0 | 公开发布 | 1-2 commit |
 
@@ -177,9 +179,9 @@ gantt
 | Week 4: 协议层（HTTP + MCP + LSP） | **3/3** ✅ ⭐ | 全部达成（Day 14/15/16 三件套） |
 | Week 4: IDE 插件 (DevEco/IntelliJ) | **0/2** ⏳ | — |
 | Week 5: Claude Code 接入 | **1/1** ✅ | Day 19 |
-| Week 6: 自动安装 + corpus 分发 + 文档 + 评估报告 | **2/4** ✅ | 评估报告 ✓ · **本地 release ✓（Day 20a）** |
+| Week 6: 自动安装 + corpus 分发 + 文档 + 评估报告 | **3/4** ✅ | 评估报告 ✓ · 本地 release ✓ · **CI matrix 自动 release ✓（Day 20b）** |
 
-**当前完成度估算：~78%**（Week 1-5 全部达成 · 协议层 3/3 ⭐ · 本地分发 ✓ · 仅 CI matrix + corpus 分发 + IDE 插件 + 文档站待做）。
+**当前完成度估算：~80%**（Week 1-5 全部达成 · 协议层 3/3 ⭐ · 本地 + CI 全平台分发 ✓ · 仅 corpus 分发 + IDE 插件 + 文档站待做）。
 
 ---
 

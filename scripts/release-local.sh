@@ -85,14 +85,15 @@ if [ -z "$TARGET_TRIPLE" ]; then
     exit 1
 fi
 
-# 平台后缀
+# 平台后缀（统一用 tar.gz · Win10+ 内置 tar.exe 能解 · 简化 CI matrix）
 OS_KIND=""
 EXT="tar.gz"
+BIN_SUFFIX=""
 case "$TARGET_TRIPLE" in
     *-apple-darwin)        OS_KIND="macos" ;;
     *-unknown-linux-gnu*)  OS_KIND="linux-gnu" ;;
     *-unknown-linux-musl*) OS_KIND="linux-musl" ;;
-    *-pc-windows-*)        OS_KIND="windows"; EXT="zip" ;;
+    *-pc-windows-*)        OS_KIND="windows"; BIN_SUFFIX=".exe" ;;
     *)                     OS_KIND="unknown" ;;
 esac
 
@@ -103,7 +104,6 @@ echo ""
 ARTIFACT_NAME="arkui-rag-v${VERSION}-${TARGET_TRIPLE}"
 
 # 2. 编译（除非 --skip-build）
-BIN_PATH="$CRATES_DIR/target/release/arkui-rag"
 if [ "$SKIP_BUILD" -eq 0 ]; then
     echo "${BOLD}[1/4] cargo build --release --features $FEATURES${NC}"
     ( cd "$CRATES_DIR" && cargo build --release -p arkui-rag-cli --features "$FEATURES" ) || {
@@ -114,7 +114,8 @@ else
     echo "${YELLOW}[1/4] 跳过 cargo build（--skip-build）${NC}"
 fi
 
-if [ ! -x "$BIN_PATH" ]; then
+BIN_PATH="$CRATES_DIR/target/release/arkui-rag${BIN_SUFFIX}"
+if [ ! -f "$BIN_PATH" ]; then
     echo "${RED}✗ 找不到产物: $BIN_PATH${NC}" >&2
     exit 1
 fi
@@ -137,7 +138,7 @@ mkdir -p "$STAGING"
 
 echo ""
 echo "${BOLD}[3/4] 暂存产物到 $STAGING${NC}"
-cp "$BIN_PATH" "$STAGING/arkui-rag"
+cp "$BIN_PATH" "$STAGING/arkui-rag${BIN_SUFFIX}"
 [ -f "$REPO_ROOT/LICENSE" ]   && cp "$REPO_ROOT/LICENSE"   "$STAGING/"
 [ -f "$REPO_ROOT/README.md" ] && cp "$REPO_ROOT/README.md" "$STAGING/"
 
@@ -195,14 +196,8 @@ mkdir -p "$DIST_DIR"
 ARCHIVE="$DIST_DIR/${ARTIFACT_NAME}.${EXT}"
 rm -f "$ARCHIVE"
 
-case "$EXT" in
-    tar.gz)
-        ( cd "$DIST_DIR/.staging" && tar -czf "$ARCHIVE" "$ARTIFACT_NAME" )
-        ;;
-    zip)
-        ( cd "$DIST_DIR/.staging" && zip -qr "$ARCHIVE" "$ARTIFACT_NAME" )
-        ;;
-esac
+# 全平台统一 tar.gz（Win10+ 内置 tar.exe 能解 · 简化 CI matrix）
+( cd "$DIST_DIR/.staging" && tar -czf "$ARCHIVE" "$ARTIFACT_NAME" )
 
 if [ ! -f "$ARCHIVE" ]; then
     echo "${RED}✗ 打包失败: $ARCHIVE${NC}" >&2

@@ -1,0 +1,153 @@
+# RAG4ArkUI · Release workflow (Day 20b)
+#
+# 触发：
+#   - 推 tag `v*`（如 `v0.0.2`、`v1.0.0-rc.1`）
+#   - 也可 workflow_dispatch 手动触发指定 tag 重跑
+#
+# 流程（4 平台 matrix · GitHub-only · gitcode 仅 mirror 代码不跑 release）：
+#   1. build matrix · 4 平台原生 build（不跨编 · 用各自 host runner）
+#       - aarch64-apple-darwin       (macos-14   Apple Silicon)
+#       - x86_64-apple-darwin        (macos-13   Intel)
+#       - x86_64-unknown-linux-gnu   (ubuntu-latest)
+#       - x86_64-pc-windows-msvc     (windows-latest · git-bash)
+#   2. 每个 matrix job 跑 scripts/release-local.sh → 产 tarball + SHA256SUMS
+#   3. 上传 artifact（保留 7 天 · debug 用）
+#   4. release job 下载所有 artifact + 合并 SHA256SUMS + 用 softprops/action-gh-release 上传到 Release page
+#
+# 第一次跑可能浮出的兼容性问题（已知 risk）：
+#   - tantivy 在 Windows 上 build 路径（基本应 OK · tantivy 0.22+ 跨平台）
+#   - lancedb / typescript feature 未启用（pre-existing 阻塞 · 详见 docs/RELEASE.md）
+#
+# 对应文档：
+#   - docs/RELEASE.md（用户向 + CI matrix 计划）
+#   - scripts/release-local.sh（实际打包逻辑）
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "tag 名（如 v0.0.2，仅 dispatch 时用）"
+        required: true
+        type: string
+
+permissions:
+  contents: write  # 创建 Release + 上传 artifact 需要
+
+env:
+  CARGO_TERM_COLOR: always
+  # 与 docs/RELEASE.md / scripts/release-local.sh 默认保持一致
+  FEATURES: "http,mcp,lsp,tantivy"
+
+# 同一 tag 并发的 release 取消旧的
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false  # 一个平台失败不阻塞其他平台 · 第一次 release 尤其有用
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-apple-darwin
+            os: macos-13
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+          key: release-${{ matrix.target }}
+
+      - name: Build release artifact
+        shell: bash
+        run: bash scripts/release-local.sh --features "$FEATURES"
+
+      - name: List dist/
+        shell: bash
+        run: ls -la dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arkui-rag-${{ matrix.target }}
+          path: |
+            dist/arkui-rag-v*-${{ matrix.target }}.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-all
+          merge-multiple: true
+
+      - name: Show all artifacts
+        run: |
+          ls -la dist-all/
+          echo "---"
+          find dist-all -type f -name '*.tar.gz' | sort
+
+      - name: Compute consolidated SHA256SUMS
+        run: |
+          cd dist-all
+          rm -f SHA256SUMS
+          for f in arkui-rag-v*.tar.gz; do
+            [ -f "$f" ] || continue
+            sha256sum "$f" >> SHA256SUMS
+          done
+          echo "── SHA256SUMS ──"
+          cat SHA256SUMS
+
+      - name: Determine tag name
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist-all/arkui-rag-v*.tar.gz
+            dist-all/SHA256SUMS

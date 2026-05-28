@@ -1,17 +1,20 @@
 # RAG4ArkUI · Release 与分发指南
 
-> Day 20 本地 CLI 端到端分发版本。CI matrix 自动 release 留 Day 20 续。
+> Day 20a + 20b：本地端到端 + CI matrix 自动 release（4 平台）已落地。
 
 ---
 
-## 当前 Release 状态（Day 20）
+## 当前 Release 状态（Day 20b）
 
 | 维度 | 状态 |
 |---|---|
-| 本地 host 平台 release 二进制 | ✅ 可用（`make release-local`） |
-| Apple Silicon arm64（aarch64-apple-darwin） | ✅ 本地实测通过 |
-| 其它平台（x86_64-darwin / linux / windows） | ⏳ 待 CI matrix 启动（Day 20 续） |
-| GitHub Releases 自动上传 | ⏳ Day 20 续（需 `release.yml` workflow） |
+| 本地 host 平台 release artifact | ✅ Day 20a · `make release-local` |
+| **CI matrix（4 平台自动 build）** | ✅ **Day 20b · `.github/workflows/release.yml`** |
+| **tag 触发自动上传 GitHub Releases** | ✅ Day 20b · push tag `v*` 即触发 |
+| Apple Silicon arm64（aarch64-apple-darwin） | ✅ 本地实测通过 + CI matrix |
+| Apple Intel x86_64（x86_64-apple-darwin） | ⏳ CI matrix 待第一次 release 验证 |
+| Linux x86_64 GNU（x86_64-unknown-linux-gnu） | ⏳ CI matrix 待第一次 release 验证 |
+| Windows x86_64 MSVC（x86_64-pc-windows-msvc） | ⏳ CI matrix 待第一次 release 验证 |
 | 安装脚本（`curl ... | sh`） | ⏳ Day 22 文档站时一并提供 |
 
 ---
@@ -120,34 +123,72 @@ mkdir -p ~/my-corpus && echo "# Hello" > ~/my-corpus/test.md
     --bm25 tantivy
 ```
 
-## CI matrix 自动 release（Day 20 续）
+## CI matrix 自动 release（Day 20b · 已实装）
 
-计划 workflow：
+workflow：[`.github/workflows/release.yml`](../.github/workflows/release.yml)
 
-```yaml
-# .github/workflows/release.yml （未来）
-on:
-  push:
-    tags: ['v*']
-jobs:
-  build:
-    strategy:
-      matrix:
-        target:
-          - aarch64-apple-darwin
-          - x86_64-apple-darwin
-          - x86_64-unknown-linux-gnu
-          - x86_64-pc-windows-msvc
-    runs-on: ${{ matrix.os }}
-    steps:
-      - run: cargo build --release --features http,mcp,lsp,tantivy --target ${{ matrix.target }}
-      - run: bash scripts/release-local.sh --skip-build
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
+```text
+触发：git push tag v*  →  GitHub Actions 4 平台 matrix
+       ├─ aarch64-apple-darwin       (macos-14)
+       ├─ x86_64-apple-darwin        (macos-13)
+       ├─ x86_64-unknown-linux-gnu   (ubuntu-latest)
+       └─ x86_64-pc-windows-msvc     (windows-latest · git-bash)
+       ↓
+每个 matrix job 跑 scripts/release-local.sh （host triple 原生 build · 不跨编）
+       ↓ artifacts (tar.gz)
+release job 合并 SHA256SUMS + softprops/action-gh-release 上传到 Release page
 ```
 
-阻塞 / 待办：
-- 本地 `make release-local-verify` 持续通过（已就绪）
-- gitcode vs github 决策（meta-4 残留项）
-- ONNX Runtime cross-compile 链接路径（onnx feature 进 release matrix 时需要）
+### 用户操作（推 1.0 release 时）
+
+```bash
+# 1. 确保本地 master 与 GitHub 同步（gitcode 仅 mirror · 不跑 release）
+git push github master
+
+# 2. 打 tag
+git tag v0.0.2
+git push github v0.0.2
+
+# 3. （可选）同步 tag 到 gitcode mirror
+git push gitcode master --tags
+
+# 4. 等 5-15 分钟看 GitHub Actions Release workflow 完成
+#    → Releases 页面会自动出现 v0.0.2 + 4 个 tarball + SHA256SUMS
+```
+
+### 双 remote 配置（GitHub 主 · gitcode mirror）
+
+```bash
+# 方案 A：保留两个独立 remote 名
+git remote add gitcode git@gitcode.com:keerecles/RAG4ArkUI.git
+# 现在 push 需要分别：
+git push github master
+git push gitcode master
+
+# 方案 B：origin 单 push 到两个 URL（推荐 · 一次 push 同步两端）
+git remote set-url --add --push origin git@gitcode.com:keerecles/RAG4ArkUI.git
+# 现在 git push origin 同步推到 github + gitcode
+```
+
+注意：release.yml **只在 GitHub 跑**（gitcode 不跑 GitHub Actions），即使代码 mirror 到 gitcode，Release artifact 也仅出现在 GitHub Releases 页面。
+
+### 第一次 release 已知 risk
+
+- ⚠️ Windows runner 上 tantivy build 路径未实测（tantivy 0.22+ 应跨平台 · 第一次跑可能浮出小问题）
+- ⚠️ macOS x86_64 runner（macos-13）已被 GitHub 标 deprecation · 长期需切到 macos-14 + `--target=x86_64-apple-darwin` 跨编
+- ⚠️ `dtolnay/rust-toolchain@stable` 第一次跑要装 toolchain · 比 cache hit 慢 ~2 分钟
+- ⚠️ tag 写错（如 `0.0.2` 不带 `v`）→ workflow 不触发
+
+### 失败重试
+
+```bash
+# 删本地 tag + 远端 tag
+git tag -d v0.0.2
+git push --delete github v0.0.2
+
+# 修复问题 + 重打 tag + 重新 push
+git tag v0.0.2
+git push github v0.0.2
+```
+
+或者用 workflow_dispatch 手动触发（在 Actions 页面填 tag 名）。

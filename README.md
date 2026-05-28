@@ -10,20 +10,24 @@
 - **本地化部署**：单 Rust 二进制 + ONNX Runtime + LanceDB / Tantivy，零云依赖
 - **协议统一**：MCP（Claude Code / Cursor）+ HTTP（IDE 插件）+ LSP，同一二进制四种形态
 
-## 当前状态：Day 20（Week 6 开局）
+## 当前状态：Day 20b（Week 6 中段）
 
-协议层 3/3 完整 ⭐ + 本地端到端 release artifact 可用：
+协议层 3/3 完整 ⭐ + 本地 release + **4 平台 CI matrix 自动 release** ⭐：
 
 - ✅ Week 1-3：Rust 骨架 + BGE-M3 + LanceDB + Tantivy + Hybrid + Reranker + HyDE + 评估
 - ✅ Week 4：HTTP (Day 14) + MCP (Day 15) + LSP (Day 16) 三协议全部真活
 - ✅ Week 5：Claude Code 接入指南 + MCP demo（Day 19）
-- ✅ Week 6 起步：**Day 20 本地 release** 单文件 6.7 MB 跨协议二进制
+- ✅ Week 6 起步：Day 20a 本地 release + **Day 20b CI matrix 自动 release**（tag `v*` 触发 · 4 平台 build · GitHub Releases 自动上传）
 
 距离 1.0 release 还差 corpus 分发管道（Day 21）+ 文档站（Day 22）。完整路线图见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。
 
-## 下载（本地 host · CI matrix 待 Day 20 续）
+## 下载
 
 ```bash
+# 方式 A：从 GitHub Releases 下（推荐 · CI matrix 已就绪 · 4 平台自动构建）
+curl -LO https://github.com/keerecles/RAG4ArkUI/releases/download/v0.0.1/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
+
+# 方式 B：本地构建（开发者 · 当前 host 平台）
 make release-local-verify      # 编译 + 打包 + 解压验证一条龙
 # 产物：dist/arkui-rag-v0.0.1-<host-triple>.tar.gz
 ```
