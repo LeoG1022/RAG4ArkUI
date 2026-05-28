@@ -5,7 +5,7 @@
 CARGO ?= cargo
 CRATES_DIR := crates
 
-.PHONY: help install-rust check check-onnx check-tantivy check-treesitter check-lancedb build build-onnx build-tantivy build-treesitter build-lancedb build-full test fmt clippy clean corpus-init smoke
+.PHONY: help install-rust check check-onnx check-tantivy check-treesitter check-lancedb check-http build build-onnx build-tantivy build-treesitter build-lancedb build-http build-full test fmt clippy clean corpus-init smoke serve-demo
 
 help:
 	@echo "RAG4ArkUI — 可用 target"
@@ -21,6 +21,9 @@ help:
 	@echo "  make build-treesitter  cargo build CLI with tree-sitter ArkTS chunker (Day 10)"
 	@echo "  make check-lancedb     cargo check -p arkui-rag-storage --features lancedb (Day 9)"
 	@echo "  make build-lancedb     cargo build CLI with LanceDB vector store (Day 9)"
+	@echo "  make check-http        cargo check -p arkui-rag-server --features http (Day 14)"
+	@echo "  make build-http        cargo build CLI with HTTP server (Day 14)"
+	@echo "  make serve-demo        启动 demo HTTP server (127.0.0.1:7654)"
 	@echo "  make test           cargo test --workspace"
 	@echo "  make smoke          端到端冒烟：index + query 真实跑通（用 /tmp 临时 corpus）"
 	@echo "  make fmt            cargo fmt --all"
@@ -69,6 +72,16 @@ build-lancedb: install-rust
 
 check-lancedb: install-rust
 	cd $(CRATES_DIR) && $(CARGO) check -p arkui-rag-storage --features lancedb
+
+check-http: install-rust
+	cd $(CRATES_DIR) && $(CARGO) check -p arkui-rag-server --features http
+
+build-http: install-rust
+	cd $(CRATES_DIR) && $(CARGO) build -p arkui-rag-cli --features http --release
+
+serve-demo: install-rust
+	cd $(CRATES_DIR) && $(CARGO) run -p arkui-rag-cli --features http -- \
+	    serve --http --addr 127.0.0.1:7654
 
 test: install-rust
 	cd $(CRATES_DIR) && $(CARGO) test --workspace

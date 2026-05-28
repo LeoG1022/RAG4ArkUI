@@ -39,5 +39,7 @@ kotlin = ["arkui-rag-chunker/kotlin"]
 swift = ["arkui-rag-chunker/swift"]
 # Day 9：启用后 --vector lancedb 可选，转发 arkui-rag-storage/lancedb
 lancedb = ["arkui-rag-storage/lancedb"]
-# 一键开全（向量 + BM25 + 全语言 + LanceDB）
-full = ["onnx", "tantivy", "typescript", "kotlin", "swift", "lancedb"]
+# Day 14：启用后 serve --http 真启动 axum
+http = ["arkui-rag-server/http"]
+# 一键开全（向量 + BM25 + 全语言 + LanceDB + HTTP）
+full = ["onnx", "tantivy", "typescript", "kotlin", "swift", "lancedb", "http"]

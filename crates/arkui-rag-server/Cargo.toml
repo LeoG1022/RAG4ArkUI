@@ -20,6 +20,16 @@ tracing = { workspace = true }
 axum = { workspace = true, optional = true }
 tower = { workspace = true, optional = true }
 
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+tower = { workspace = true }
+tempfile = "3.13"
+arkui-rag-embedding = { workspace = true }
+arkui-rag-storage = { workspace = true }
+arkui-rag-chunker = { workspace = true }
+arkui-rag-indexer = { workspace = true }
+arkui-rag-retrieval = { workspace = true }
+
 [features]
 default = []
 # Week 4 起：启用三套协议

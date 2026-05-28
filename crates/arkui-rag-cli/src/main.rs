@@ -81,7 +81,7 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Cmd {
-    /// 启动常驻服务（HTTP / MCP / LSP，至少选其一）—— Week 4 实装
+    /// 启动常驻服务（HTTP / MCP / LSP，至少选其一）。HTTP Day 14 真活；MCP/LSP 仍 stub。
     Serve {
         #[arg(long)]
         http: bool,
@@ -89,6 +89,32 @@ enum Cmd {
         mcp: bool,
         #[arg(long)]
         lsp: bool,
+        /// HTTP 监听地址（仅 --http 有效）
+        #[arg(long, default_value = "127.0.0.1:7654")]
+        addr: String,
+        // 复用 query 全部参数，让 server 启动时构造完整检索流水线
+        #[arg(long, default_value = DEFAULT_INDEX_PATH)]
+        index_path: PathBuf,
+        #[arg(long, value_enum, default_value_t = EmbedderKind::Mock)]
+        embedder: EmbedderKind,
+        #[arg(long)]
+        model_path: Option<PathBuf>,
+        #[arg(long, default_value_t = DEFAULT_MOCK_DIM)]
+        dim: usize,
+        #[arg(long, value_enum, default_value_t = Bm25Kind::Memory)]
+        bm25: Bm25Kind,
+        #[arg(long, value_enum, default_value_t = VectorKind::Memory)]
+        vector: VectorKind,
+        #[arg(long, value_enum, default_value_t = RerankerKind::None)]
+        rerank: RerankerKind,
+        #[arg(long, default_value_t = 50)]
+        pre_rerank_k: usize,
+        #[arg(long)]
+        reranker_model_path: Option<PathBuf>,
+        #[arg(long, default_value = "bge-reranker-v2-m3")]
+        reranker_model_id: String,
+        #[arg(long, value_enum, default_value_t = HydeKind::None)]
+        hyde: HydeKind,
     },
     /// 对指定目录建索引
     Index {
@@ -228,13 +254,47 @@ async fn main() -> ExitCode {
 
 async fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.cmd {
-        Cmd::Serve { http, mcp, lsp } => {
+        Cmd::Serve {
+            http,
+            mcp,
+            lsp,
+            addr,
+            index_path,
+            embedder,
+            model_path,
+            dim,
+            bm25,
+            vector,
+            rerank,
+            pre_rerank_k,
+            reranker_model_path,
+            reranker_model_id,
+            hyde,
+        } => {
             if !http && !mcp && !lsp {
                 anyhow::bail!("必须指定至少一个协议：--http / --mcp / --lsp");
             }
-            println!("arkui-rag serve (stub) — http={} mcp={} lsp={}", http, mcp, lsp);
-            println!("⏳ Week 4 backlog：协议路由实际监听（见 docs/RAG4ArkUI-完整技术方案.md §4.4）");
-            Ok(())
+            if mcp || lsp {
+                println!("⏳ MCP / LSP 仍是 stub（Week 4 续）；本轮 Day 14 仅实装 --http");
+            }
+            if !http {
+                anyhow::bail!("Day 14 仅 --http 真活；MCP/LSP 待 Week 4 续");
+            }
+            cmd_serve_http(
+                &addr,
+                &index_path,
+                embedder,
+                model_path.as_deref(),
+                dim,
+                bm25,
+                vector,
+                rerank,
+                pre_rerank_k,
+                reranker_model_path.as_deref(),
+                &reranker_model_id,
+                hyde,
+            )
+            .await
         }
         Cmd::Index {
             source,
@@ -952,6 +1012,147 @@ async fn cmd_eval(
     println!("   report saved   : {}", report_path.display());
 
     Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn cmd_serve_http(
+    addr_str: &str,
+    index_path: &Path,
+    embedder_kind: EmbedderKind,
+    model_path: Option<&Path>,
+    mock_dim: usize,
+    bm25_kind: Bm25Kind,
+    vector_kind: VectorKind,
+    rerank_kind: RerankerKind,
+    pre_rerank_k: usize,
+    reranker_model_path: Option<&Path>,
+    reranker_model_id: &str,
+    hyde_kind: HydeKind,
+) -> anyhow::Result<()> {
+    serve_http_impl(
+        addr_str,
+        index_path,
+        embedder_kind,
+        model_path,
+        mock_dim,
+        bm25_kind,
+        vector_kind,
+        rerank_kind,
+        pre_rerank_k,
+        reranker_model_path,
+        reranker_model_id,
+        hyde_kind,
+    )
+    .await
+}
+
+#[cfg(feature = "http")]
+#[allow(clippy::too_many_arguments)]
+async fn serve_http_impl(
+    addr_str: &str,
+    index_path: &Path,
+    embedder_kind: EmbedderKind,
+    model_path: Option<&Path>,
+    mock_dim: usize,
+    bm25_kind: Bm25Kind,
+    vector_kind: VectorKind,
+    rerank_kind: RerankerKind,
+    pre_rerank_k: usize,
+    reranker_model_path: Option<&Path>,
+    reranker_model_id: &str,
+    hyde_kind: HydeKind,
+) -> anyhow::Result<()> {
+    use arkui_rag_server::{serve_http, AppState, HttpOptions};
+
+    // 校验索引存在
+    match vector_kind {
+        VectorKind::Memory if !index_path.exists() => anyhow::bail!(
+            "索引文件不存在：{}（先跑 arkui-rag index）",
+            index_path.display()
+        ),
+        VectorKind::Lancedb if !lancedb_dir_from(index_path).exists() => anyhow::bail!(
+            "LanceDB 索引目录不存在：{}",
+            lancedb_dir_from(index_path).display()
+        ),
+        _ => {}
+    }
+
+    // 构造完整流水线（复用 query 路径逻辑）
+    let vector_backend = match vector_kind {
+        VectorKind::Memory => VectorBackend::Memory(Arc::new(
+            InMemoryVectorStore::load_from(index_path).await?,
+        )),
+        VectorKind::Lancedb => build_vector_load(vector_kind, index_path, "unknown", mock_dim).await?,
+    };
+    let dim = vector_backend.dim().max(1);
+    let index_model_id = vector_backend.embedder_model_id().to_string();
+    let model_id_for_build = if matches!(vector_kind, VectorKind::Memory) {
+        index_model_id.as_str()
+    } else {
+        "bge-m3"
+    };
+    let (embedder, query_model_id, _query_dim) =
+        build_embedder(embedder_kind, model_path, model_id_for_build, dim).await?;
+
+    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
+    let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
+    let (enhancer, _hyde_name) = build_enhancer(hyde_kind);
+
+    let retriever: Arc<dyn arkui_rag_core::Retriever> =
+        Arc::new(HybridRetriever::new(embedder, vector_backend.as_store(), bm25));
+
+    let metadata_store: Option<Arc<dyn arkui_rag_storage::MetadataStore>> = match &vector_backend {
+        VectorBackend::Memory(s) => Some(s.clone()),
+        #[cfg(feature = "lancedb")]
+        VectorBackend::Lancedb(s) => Some(s.clone()),
+    };
+
+    let state = AppState {
+        retriever,
+        reranker: reranker_opt.map(|(r, _)| r),
+        enhancer,
+        metadata_store,
+        pre_rerank_k,
+        embedder_model_id: query_model_id,
+        embedder_dim: dim,
+        bm25_name: bm25_name.to_string(),
+        vector_name: vector_backend.name().to_string(),
+    };
+
+    let addr: std::net::SocketAddr = addr_str.parse()
+        .map_err(|e| anyhow::anyhow!("解析 --addr {} 失败: {}", addr_str, e))?;
+    let opts = HttpOptions { addr };
+
+    println!("🚀 HTTP server starting on http://{}", addr);
+    println!("   embedder={} · bm25={} · vector={} · rerank={} ",
+        state.embedder_model_id, state.bm25_name, state.vector_name,
+        if state.reranker.is_some() { "on" } else { "off" });
+    println!("   routes: GET /health · GET /corpus/list · POST /search · POST /index (stub)");
+    serve_http(&opts, state).await?;
+    Ok(())
+}
+
+#[cfg(not(feature = "http"))]
+#[allow(clippy::too_many_arguments)]
+async fn serve_http_impl(
+    _addr_str: &str,
+    _index_path: &Path,
+    _embedder_kind: EmbedderKind,
+    _model_path: Option<&Path>,
+    _mock_dim: usize,
+    _bm25_kind: Bm25Kind,
+    _vector_kind: VectorKind,
+    _rerank_kind: RerankerKind,
+    _pre_rerank_k: usize,
+    _reranker_model_path: Option<&Path>,
+    _reranker_model_id: &str,
+    _hyde_kind: HydeKind,
+) -> anyhow::Result<()> {
+    anyhow::bail!(
+        "本二进制未启用 http feature。重新构建：\n\
+         \tcargo build -p arkui-rag-cli --features http --release\n\
+         （或 --features full 启用全套）"
+    )
 }
 
 async fn corpus_op(op: CorpusOp) -> anyhow::Result<()> {
