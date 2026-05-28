@@ -41,5 +41,7 @@ swift = ["arkui-rag-chunker/swift"]
 lancedb = ["arkui-rag-storage/lancedb"]
 # Day 14：启用后 serve --http 真启动 axum
 http = ["arkui-rag-server/http"]
-# 一键开全（向量 + BM25 + 全语言 + LanceDB + HTTP）
-full = ["onnx", "tantivy", "typescript", "kotlin", "swift", "lancedb", "http"]
+# Day 15：启用后 serve --mcp 真启动 stdio JSON-RPC
+mcp = ["arkui-rag-server/mcp"]
+# 一键开全（向量 + BM25 + 全语言 + LanceDB + HTTP + MCP）
+full = ["onnx", "tantivy", "typescript", "kotlin", "swift", "lancedb", "http", "mcp"]

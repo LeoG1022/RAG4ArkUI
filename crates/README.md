@@ -18,7 +18,7 @@
 | [`arkui-rag-retrieval`](arkui-rag-retrieval/) | HybridRetriever + RRF + Rerank | ✅ HybridRetriever 真活；**Day 4 起 RRF 真正双路融合**；**Day 5 起 Reranker 接入（embedding crate 的 OnnxReranker）** | §1.4 / §2.4 |
 | [`arkui-rag-indexer`](arkui-rag-indexer/) | 索引流水线编排 | ✅ index_directory 真活 · **Day 10 起接 ChunkerDispatcher 支持多语言路由** · 端到端集成测试 | §9 图 5 / §9 图 2 |
 | [`arkui-rag-eval`](arkui-rag-eval/) | **检索质量评估（Day 6 新增）** | ✅ recall@k / MRR / 延迟 + markdown 报告 + 端到端集成测试 | §1.5 / §2.7 / §8.5 共识 4 |
-| [`arkui-rag-server`](arkui-rag-server/) | HTTP + MCP + LSP 协议 | ✅ **HTTP 真活（Day 14 · feature `http` · axum）**：/health · /corpus/list · POST /search · POST /index stub；MCP/LSP Week 4 续 | §4.2 决策 2 / §9 图 8 |
+| [`arkui-rag-server`](arkui-rag-server/) | HTTP + MCP + LSP 协议 | ✅ HTTP（Day 14）+ **MCP stdio（Day 15 · feature `mcp` · 4 tools · Claude Code 接入）** · LSP Week 4 续 | §4.2 决策 2 / §9 图 8 |
 | [`arkui-rag-cli`](arkui-rag-cli/) | `arkui-rag` 二进制入口 | ✅ index/query/eval/**serve --http（Day 14）** + `--embedder/--bm25/--vector/--rerank/--hyde/--expand-parent` 全套 | §5 / §9 图 8 |
 
 ## 构建

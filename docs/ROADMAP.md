@@ -42,7 +42,8 @@ gantt
     tree-sitter (代码切分)           :done,    d10, after d7, 2d
     LanceDB (Week 1 收尾)            :done,    d9, after d10, 2d
     Parent-Child 父子索引            :done,    d11, after d9, 1d
-    HTTP/REST Server (当前)          :active,  d14, after d11, 2d
+    HTTP/REST Server                :done,    d14, after d11, 2d
+    MCP Server (当前 · 协议层基本完整)  :active,  d15, after d14, 3d
 
     section ⏳ Week 2 末
     tantivy-jieba 中文升级           :         d8, after d14, 1d
@@ -53,7 +54,6 @@ gantt
 
     section ⏳ Week 4 (协议层)
     (Week 3 末协议层下游切片)         :         d14_done, 2026-06-01, 1d
-    MCP Server (4 tools)            :crit,    d15, after d14, 3d
     LSP Server                      :         d16, after d15, 2d
 
     section ⏳ Week 5 (IDE 接入)
@@ -89,7 +89,8 @@ gantt
 | `ab869ba` | 10 | 13 | tree-sitter ArkTS/TS 代码切分 + ChunkerDispatcher 路由 + Indexer 重构 | [STATUS-day10](STATUS-day10-tree-sitter.md) |
 | `d7301e1` | 9 | 14 | LanceDB 嵌入式向量库（VectorBackend 抽象 · Week 1 全部达成 ⭐） | [STATUS-day9](STATUS-day9-lancedb.md) |
 | `e2a7129` | 11 | 15 | Parent-Child 父子索引 + ContextAssembler + CLI --expand-parent | [STATUS-day11](STATUS-day11-parent-child.md) |
-| _(本 commit)_ | **14 (当前)** | **16** | **HTTP/REST Server**（axum · /search /health /corpus/list · serve --http 真启动 · 5 集成测） | [STATUS-day14](STATUS-day14-http.md) |
+| `af19208` | 14 | 16 | HTTP/REST Server（axum · /search /health /corpus/list · 5 集成测） | [STATUS-day14](STATUS-day14-http.md) |
+| _(本 commit)_ | **15 (当前)** | **17** | **MCP Server**（JSON-RPC stdio · 4 tools · Claude Code 直接接入 ⭐） | [STATUS-day15](STATUS-day15-mcp.md) |
 
 ---
 
@@ -117,7 +118,7 @@ gantt
 | Day | 切片 | 价值 | 工作量 |
 |---|---|---|---|
 | ~~14~~ | ~~HTTP/REST Server (axum)~~ | ✅ **Day 14 完成**（/health · /corpus/list · POST /search · /index stub） | — |
-| **15 ⭐ 关键** | **MCP Server (4 tools + stdio/SSE)** | **Claude Code / Cursor 直接接入**，方案核心 | 3-4 commit |
+| ~~15~~ | ~~MCP Server~~ | ✅ **Day 15 完成**（手撸 JSON-RPC stdio · 4 tools · Claude Code 接入就绪 ⭐） | — |
 | 16 | LSP Server (tower-lsp) | IDE 内联补全 + diagnostic | 2-3 commit |
 
 ### 🟢 Week 5 · IDE 接入（差异化目标，3 个切片）
@@ -164,12 +165,12 @@ gantt
 |---|---|---|
 | Week 1: Rust 骨架 + tree-sitter + LanceDB + Tantivy + BGE-M3 | **7/7** ✅ | 全部达成（tree-sitter ArkTS ✓ · LanceDB ✓ Day 9 · Kotlin/Swift stub 是非阻塞补强） |
 | Week 2: 混合检索 + Reranker + HyDE + 评估集 | **4/4** ✅ | 全部达成 |
-| Week 3: HTTP + MCP + CLI | **2/3** ✅ | HTTP ✓ Day 14 · MCP ⏳ |
+| Week 3: HTTP + MCP + CLI | **3/3** ✅ | 全部达成 ⭐ |
 | Week 4: IDE 插件 (DevEco/IntelliJ) | **0/2** ⏳ | — |
 | Week 5: Claude Code 接入 | **0/1** ⏳ | — |
 | Week 6: 自动安装 + corpus 分发 + 文档 + 评估报告 | **1/4** ✅ | 评估报告 ✓ |
 
-**当前完成度估算：~60%**（Week 1 + Week 2 全部达成 · 协议层入门 · 关键路径起点突破）。
+**当前完成度估算：~65%**（Week 1 + Week 2 + Week 3 全部达成 · 协议层基本完整 · Claude Code 接入就绪）。
 
 ---
 
@@ -196,8 +197,9 @@ gantt
 | ✅ 代码 corpus 真活（tree-sitter ArkTS） | 14 | 13 |
 | ✅ Week 1 全部达成（+ LanceDB） | 15 | 14 |
 | ✅ Parent-Child 标准（**当前位置**） | 16 | 15 |
-| ✅ HTTP/REST Server（**当前位置 · 协议层入门**） | 17 | 16 |
-| MCP Server（Week 4 关键 · Claude Code 接入） | +3 | 19 |
+| ✅ HTTP/REST Server（协议层入门） | 17 | 16 |
+| ✅ MCP Server（**当前位置 · Claude Code 接入就绪** ⭐） | 18 | 17 |
+| LSP Server（协议层最后一项） | +2 | 19 |
 | 协议层完整（HTTP + MCP + LSP） | +12 | 28 |
 | 首个 IDE 插件 MVP（DevEco） | +8 | 36 |
 | 公开 release 1.0 | +5 | 41 |

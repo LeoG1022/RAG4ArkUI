@@ -5,7 +5,7 @@
 CARGO ?= cargo
 CRATES_DIR := crates
 
-.PHONY: help install-rust check check-onnx check-tantivy check-treesitter check-lancedb check-http build build-onnx build-tantivy build-treesitter build-lancedb build-http build-full test fmt clippy clean corpus-init smoke serve-demo
+.PHONY: help install-rust check check-onnx check-tantivy check-treesitter check-lancedb check-http check-mcp build build-onnx build-tantivy build-treesitter build-lancedb build-http build-mcp build-full test fmt clippy clean corpus-init smoke serve-demo serve-mcp-demo
 
 help:
 	@echo "RAG4ArkUI — 可用 target"
@@ -24,6 +24,9 @@ help:
 	@echo "  make check-http        cargo check -p arkui-rag-server --features http (Day 14)"
 	@echo "  make build-http        cargo build CLI with HTTP server (Day 14)"
 	@echo "  make serve-demo        启动 demo HTTP server (127.0.0.1:7654)"
+	@echo "  make check-mcp         cargo check -p arkui-rag-server --features mcp (Day 15)"
+	@echo "  make build-mcp         cargo build CLI with MCP stdio server (Day 15)"
+	@echo "  make serve-mcp-demo    启动 MCP stdio server"
 	@echo "  make test           cargo test --workspace"
 	@echo "  make smoke          端到端冒烟：index + query 真实跑通（用 /tmp 临时 corpus）"
 	@echo "  make fmt            cargo fmt --all"
@@ -82,6 +85,16 @@ build-http: install-rust
 serve-demo: install-rust
 	cd $(CRATES_DIR) && $(CARGO) run -p arkui-rag-cli --features http -- \
 	    serve --http --addr 127.0.0.1:7654
+
+check-mcp: install-rust
+	cd $(CRATES_DIR) && $(CARGO) check -p arkui-rag-server --features mcp
+
+build-mcp: install-rust
+	cd $(CRATES_DIR) && $(CARGO) build -p arkui-rag-cli --features mcp --release
+
+serve-mcp-demo: install-rust
+	cd $(CRATES_DIR) && $(CARGO) run -p arkui-rag-cli --features mcp -- \
+	    serve --mcp
 
 test: install-rust
 	cd $(CRATES_DIR) && $(CARGO) test --workspace

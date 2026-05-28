@@ -34,5 +34,6 @@ arkui-rag-retrieval = { workspace = true }
 default = []
 # Week 4 起：启用三套协议
 http = ["dep:axum", "dep:tower"]
+# Day 15：启用 MCP stdio JSON-RPC（无第三方 SDK · 手撸协议）
 mcp = []
 lsp = []

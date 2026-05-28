@@ -1,6 +1,6 @@
 # rag4arkui-core
 
-> 状态：in-progress (Day 14 HTTP Server 真活 · 协议层入门 · 关键路径起点突破 ⭐)
+> 状态：in-progress (Day 15 MCP Server 真活 · **协议层基本完整** · Claude Code 接入就绪 ⭐)
 > 创建：2026-05-27
 
 ## 用途
@@ -40,3 +40,4 @@
 - [14-2026-05-28-day9-lancedb.md](14-2026-05-28-day9-lancedb.md) — Day 9 LanceDB 嵌入式向量库（VectorBackend 抽象 · CLI --vector · **Week 1 7/7 全部达成** ⭐）· STATUS：`docs/STATUS-day9-lancedb.md`
 - [15-2026-05-28-day11-parent-child.md](15-2026-05-28-day11-parent-child.md) — Day 11 Parent-Child 父子索引（Chunker 自动填 parent_id + ContextAssembler + CLI --expand-parent · 方案 §1.4 标准）· STATUS：`docs/STATUS-day11-parent-child.md`
 - [16-2026-05-28-day14-http.md](16-2026-05-28-day14-http.md) — Day 14 HTTP/REST Server（axum 真活 · /search /health /corpus/list + AppState 抽象 · 关键路径起点突破 ⭐）· STATUS：`docs/STATUS-day14-http.md`
+- [17-2026-05-28-day15-mcp.md](17-2026-05-28-day15-mcp.md) — Day 15 MCP Server（手撸 JSON-RPC stdio · 4 tools · **Claude Code 接入就绪 · Week 3 协议层 3/3 ⭐**）· STATUS：`docs/STATUS-day15-mcp.md`
