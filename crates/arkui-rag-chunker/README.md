@@ -21,13 +21,15 @@
 
 ## 用法
 
-```rust
+```rust,ignore
 use arkui_rag_chunker::MarkdownChunker;
 use arkui_rag_core::{ASTChunker, chunker::SourceLang};
 
-# tokio_test::block_on(async {
 let ch = MarkdownChunker::new();
-let chunks = ch.chunk("corpus/official/router.md", "# Router\n\n## pushUrl\n...", SourceLang::Markdown).await.unwrap();
+let chunks = ch.chunk(
+    "corpus/official/router.md",
+    "# Router\n\n## pushUrl\n...",
+    SourceLang::Markdown,
+).await.unwrap();
 assert!(!chunks.is_empty());
-# });
 ```

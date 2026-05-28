@@ -64,6 +64,9 @@ lancedb = "0.10"
 arrow-array = "52"
 arrow-schema = "52"
 futures = "0.3"
+# 钉 chrono 到 0.4.39（在 quarter() 引入之前 · 修 lancedb→arrow-arith 52.x ChronoDateExt::quarter() 撞 chrono 0.4.40+ Datelike::quarter() 的歧义）
+# follow-up：arrow-arith / lancedb 升级后可移除
+chrono = "=0.4.39"
 
 # HTTP server（server crate 用）
 axum = "0.8"
@@ -88,3 +91,4 @@ strip = "symbols"
 [profile.dev]
 opt-level = 0
 debug = true
+

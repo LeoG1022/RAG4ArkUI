@@ -21,6 +21,8 @@ lancedb = { workspace = true, optional = true }
 arrow-array = { workspace = true, optional = true }
 arrow-schema = { workspace = true, optional = true }
 futures = { workspace = true, optional = true }
+# 与 lancedb feature 一起钉 chrono 0.4.39，避开 Datelike::quarter() vs arrow-arith ChronoDateExt::quarter() 歧义
+chrono = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = "3.13"
@@ -31,4 +33,5 @@ default = []
 # Day 4：启用 Tantivy（真实 BM25 倒排检索）
 tantivy = ["dep:tantivy"]
 # Day 9：启用 LanceDB（嵌入式向量库，解锁 chunks > 10k）
-lancedb = ["dep:lancedb", "dep:arrow-array", "dep:arrow-schema", "dep:futures"]
+# `dep:chrono` 一并启用 · 钉到 0.4.39 修 arrow-arith 52.x 的 trait method 歧义（见 workspace Cargo.toml 注释）
+lancedb = ["dep:lancedb", "dep:arrow-array", "dep:arrow-schema", "dep:futures", "dep:chrono"]

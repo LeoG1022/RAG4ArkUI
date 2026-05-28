@@ -8,14 +8,14 @@
 
 ## 📍 当前位置
 
-**Day 20b 完成 · 4 平台 CI matrix 自动 release · tag `v*` 触发 GitHub Releases 自动上传 ⭐**
+**Day 20c 完成 · pre-existing 阻塞清理（Phase 1+2）· typescript feature 解锁 · 默认 release features 5 项**
 
-- 9 个 Cargo crate · **HTTP + MCP + LSP 三协议全部真活**
+- 9 个 Cargo crate · HTTP + MCP + LSP 三协议全部真活 ⭐
 - 本地 + CI 双路径分发：`make release-local`（本地 host）+ `.github/workflows/release.yml`（4 平台 matrix）
-- 4 平台目标：aarch64/x86_64 darwin · x86_64 linux gnu · x86_64 windows msvc
-- 触发：`git tag v0.0.2 && git push --tags` · CI 5-15 分钟产出 Release page + 4 个 tarball + SHA256SUMS
-- 15 个 STATUS 文档（规则 #17 生效后强制配套）
-- 22 个 git commit / 历史 15 个工作 Day
+- 默认 release features **5 项**（http, mcp, lsp, tantivy, **typescript** 新加）
+- pre-existing 阻塞清单：仅余 lancedb 主版本升级（task #81）
+- 16 个 STATUS 文档（规则 #17 生效后强制配套）
+- 23 个 git commit / 历史 15 个工作 Day
 
 ---
 
@@ -74,7 +74,7 @@ gantt
 
 ---
 
-## ✅ 已完成（22 commits）
+## ✅ 已完成（23 commits）
 
 | Commit | Day | Round | 内容 | STATUS |
 |---|---|---|---|---|
@@ -99,7 +99,8 @@ gantt
 | `865c463` | 19 | 18 | Claude Code 接入验证（接入指南 10 节 + bash 端到端 demo · Week 5 1/1 ⭐） | [STATUS-day19](STATUS-day19-claude-code.md) |
 | `611cdcb` | 16 | 19 | LSP Server（手撸 Content-Length framing + 5 method + custom commands · 协议层 3/3 完整 ⭐） + 11 pre-existing 编译缺陷清理 | [STATUS-day16](STATUS-day16-lsp.md) |
 | `197e894` | 20a | 20 | 本地 host release artifact（`scripts/release-local.sh` + Makefile + `docs/RELEASE.md` · 端到端 CLI 可下载即用 ⭐） | [STATUS-day20a](STATUS-day20a-release-local.md) |
-| _(本 commit)_ | **20b (当前)** | **21** | **CI matrix release**（`.github/workflows/release.yml` · 4 平台 build · tag `v*` 触发 · GitHub Releases 自动上传 ⭐） | [STATUS-day20b](STATUS-day20b-ci-matrix.md) |
+| `3ddb3a3` | 20b | 21 | CI matrix release（`.github/workflows/release.yml` · 4 平台 build · tag `v*` 触发 · GitHub Releases 自动上传 ⭐） | [STATUS-day20b](STATUS-day20b-ci-matrix.md) |
+| _(本 commit)_ | **20c (当前)** | **22** | **pre-existing 阻塞清理**（Phase 1 typescript API 对齐 ✅ · Phase 2 chrono pin ✅ · typescript 进默认 features ⭐） | [STATUS-pre-existing-fixes](STATUS-pre-existing-fixes.md) |
 
 ---
 
