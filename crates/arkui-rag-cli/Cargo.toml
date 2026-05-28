@@ -43,5 +43,7 @@ lancedb = ["arkui-rag-storage/lancedb"]
 http = ["arkui-rag-server/http"]
 # Day 15：启用后 serve --mcp 真启动 stdio JSON-RPC
 mcp = ["arkui-rag-server/mcp"]
-# 一键开全（向量 + BM25 + 全语言 + LanceDB + HTTP + MCP）
-full = ["onnx", "tantivy", "typescript", "kotlin", "swift", "lancedb", "http", "mcp"]
+# Day 16：启用后 serve --lsp 真启动 LSP stdio (Content-Length framing)
+lsp = ["arkui-rag-server/lsp"]
+# 一键开全（向量 + BM25 + 全语言 + LanceDB + HTTP + MCP + LSP）
+full = ["onnx", "tantivy", "typescript", "kotlin", "swift", "lancedb", "http", "mcp", "lsp"]

@@ -5,7 +5,7 @@ use arkui_rag_core::{chunker::SourceLang, EnhancedQuery, Retriever};
 use arkui_rag_embedding::MockEmbedder;
 use arkui_rag_indexer::Indexer;
 use arkui_rag_retrieval::HybridRetriever;
-use arkui_rag_storage::{InMemoryBM25Index, InMemoryVectorStore};
+use arkui_rag_storage::{InMemoryBM25Index, InMemoryVectorStore, VectorStore};
 use std::sync::Arc;
 
 fn dispatcher_markdown() -> Arc<ChunkerDispatcher> {

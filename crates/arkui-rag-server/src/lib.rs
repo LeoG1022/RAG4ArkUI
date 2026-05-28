@@ -2,6 +2,7 @@
 
 #[cfg(feature = "http")]
 pub mod http;
+#[cfg(feature = "lsp")]
 pub mod lsp;
 #[cfg(feature = "mcp")]
 pub mod mcp;
@@ -13,9 +14,9 @@ pub use http::{build_router, serve as serve_http, AppState as HttpAppState};
 #[cfg(feature = "http")]
 pub use http::AppState;
 
-// 当只启 mcp 不启 http 时，AppState 类型不可用 → 给一个独立定义
-#[cfg(all(feature = "mcp", not(feature = "http")))]
-pub mod app_state_mcp_only {
+// 当只启 stdio 协议（mcp / lsp）不启 http 时，AppState 类型不可用 → 给一个独立定义
+#[cfg(all(any(feature = "mcp", feature = "lsp"), not(feature = "http")))]
+pub mod app_state_stdio_only {
     use arkui_rag_core::{QueryEnhancer, Reranker, Retriever};
     use arkui_rag_storage::MetadataStore;
     use std::sync::Arc;
@@ -31,11 +32,14 @@ pub mod app_state_mcp_only {
         pub vector_name: String,
     }
 }
-#[cfg(all(feature = "mcp", not(feature = "http")))]
-pub use app_state_mcp_only::AppState;
+#[cfg(all(any(feature = "mcp", feature = "lsp"), not(feature = "http")))]
+pub use app_state_stdio_only::AppState;
 
 #[cfg(feature = "mcp")]
 pub use mcp::serve_stdio as serve_mcp_stdio;
+
+#[cfg(feature = "lsp")]
+pub use lsp::serve_stdio as serve_lsp_stdio;
 
 /// 服务启动选项。`arkui-rag-cli` 的 `serve` subcommand 直接构造此结构传入。
 #[derive(Debug, Clone, Default)]

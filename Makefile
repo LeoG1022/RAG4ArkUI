@@ -5,7 +5,7 @@
 CARGO ?= cargo
 CRATES_DIR := crates
 
-.PHONY: help install-rust check check-onnx check-tantivy check-treesitter check-lancedb check-http check-mcp build build-onnx build-tantivy build-treesitter build-lancedb build-http build-mcp build-full test fmt clippy clean corpus-init smoke serve-demo serve-mcp-demo mcp-demo
+.PHONY: help install-rust check check-onnx check-tantivy check-treesitter check-lancedb check-http check-mcp check-lsp build build-onnx build-tantivy build-treesitter build-lancedb build-http build-mcp build-lsp build-full test fmt clippy clean corpus-init smoke serve-demo serve-mcp-demo serve-lsp-demo mcp-demo
 
 help:
 	@echo "RAG4ArkUI — 可用 target"
@@ -28,6 +28,9 @@ help:
 	@echo "  make build-mcp         cargo build CLI with MCP stdio server (Day 15)"
 	@echo "  make serve-mcp-demo    启动 MCP stdio server"
 	@echo "  make mcp-demo          MCP 端到端演示（启动 server + 喂 4 请求 + 断言响应 · Day 19）"
+	@echo "  make check-lsp         cargo check -p arkui-rag-server --features lsp (Day 16)"
+	@echo "  make build-lsp         cargo build CLI with LSP stdio server (Day 16)"
+	@echo "  make serve-lsp-demo    启动 LSP stdio server"
 	@echo "  make test           cargo test --workspace"
 	@echo "  make smoke          端到端冒烟：index + query 真实跑通（用 /tmp 临时 corpus）"
 	@echo "  make fmt            cargo fmt --all"
@@ -99,6 +102,16 @@ serve-mcp-demo: install-rust
 
 mcp-demo: install-rust
 	bash scripts/mcp-demo.sh
+
+check-lsp: install-rust
+	cd $(CRATES_DIR) && $(CARGO) check -p arkui-rag-server --features lsp
+
+build-lsp: install-rust
+	cd $(CRATES_DIR) && $(CARGO) build -p arkui-rag-cli --features lsp --release
+
+serve-lsp-demo: install-rust
+	cd $(CRATES_DIR) && $(CARGO) run -p arkui-rag-cli --features lsp -- \
+	    serve --lsp
 
 test: install-rust
 	cd $(CRATES_DIR) && $(CARGO) test --workspace

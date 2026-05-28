@@ -27,7 +27,7 @@
 
 ## HTTP 路由（规约）
 
-```
+```text
 POST /search          { query, top_k, filters } → { hits[], citations[], latency_ms }
 POST /index           { source_path }           → { indexed: N, skipped: M, errors: [] }
 GET  /health                                    → { status, model_id, corpus_version }

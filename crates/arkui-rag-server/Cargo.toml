@@ -11,6 +11,7 @@ description = "Protocol adapters: HTTP / MCP / LSP. Wraps the RAG engine."
 [dependencies]
 arkui-rag-core = { workspace = true }
 arkui-rag-retrieval = { workspace = true }
+arkui-rag-storage = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 serde = { workspace = true }
@@ -25,7 +26,6 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 tower = { workspace = true }
 tempfile = "3.13"
 arkui-rag-embedding = { workspace = true }
-arkui-rag-storage = { workspace = true }
 arkui-rag-chunker = { workspace = true }
 arkui-rag-indexer = { workspace = true }
 arkui-rag-retrieval = { workspace = true }
@@ -33,7 +33,8 @@ arkui-rag-retrieval = { workspace = true }
 [features]
 default = []
 # Week 4 起：启用三套协议
-http = ["dep:axum", "dep:tower"]
+http = ["dep:axum", "dep:tower", "tokio/signal"]
 # Day 15：启用 MCP stdio JSON-RPC（无第三方 SDK · 手撸协议）
-mcp = []
-lsp = []
+mcp = ["tokio/io-std"]
+# Day 16：启用 LSP stdio JSON-RPC + Content-Length framing
+lsp = ["tokio/io-std"]

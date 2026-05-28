@@ -14,7 +14,7 @@ pub use chunk::{Chunk, ChunkId, ChunkMetadata, ChunkType, Platform};
 pub use chunker::ASTChunker;
 pub use embedder::Embedder;
 pub use error::{RagError, Result};
-pub use hit::{Citation, Hit};
+pub use hit::{Citation, Hit, HitSource};
 pub use query::{EnhancedQuery, QueryFilters, QueryIntent};
 pub use query_enhancer::{PassthroughEnhancer, QueryEnhancer};
 pub use reranker::Reranker;

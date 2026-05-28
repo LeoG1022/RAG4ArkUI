@@ -207,6 +207,9 @@ enum Cmd {
         /// BM25 后端（与建索引一致）
         #[arg(long, value_enum, default_value_t = Bm25Kind::Memory)]
         bm25: Bm25Kind,
+        /// 向量后端（与建索引一致）
+        #[arg(long, value_enum, default_value_t = VectorKind::Memory)]
+        vector: VectorKind,
         /// Reranker 后端
         #[arg(long, value_enum, default_value_t = RerankerKind::None)]
         rerank: RerankerKind,
@@ -271,20 +274,33 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             reranker_model_id,
             hyde,
         } => {
-            if !http && !mcp && !lsp {
-                anyhow::bail!("必须指定至少一个协议：--http / --mcp / --lsp");
+            // Day 16：三协议互斥校验
+            let selected = (http as u8) + (mcp as u8) + (lsp as u8);
+            if selected == 0 {
+                anyhow::bail!("必须指定一个协议：--http / --mcp / --lsp");
             }
-            if lsp {
-                println!("⏳ LSP 仍是 stub（Week 4 续）");
-            }
-            if !http && !mcp {
-                anyhow::bail!("Day 15 起 --http / --mcp 真活；LSP 待 Week 4 续");
-            }
-            if http && mcp {
-                anyhow::bail!("--http 和 --mcp 互斥（MCP 占用 stdio · HTTP 占用端口）");
+            if selected > 1 {
+                anyhow::bail!(
+                    "--http / --mcp / --lsp 三者互斥（stdio 协议同进程只能占用一次）"
+                );
             }
             if mcp {
                 cmd_serve_mcp(
+                    &index_path,
+                    embedder,
+                    model_path.as_deref(),
+                    dim,
+                    bm25,
+                    vector,
+                    rerank,
+                    pre_rerank_k,
+                    reranker_model_path.as_deref(),
+                    &reranker_model_id,
+                    hyde,
+                )
+                .await
+            } else if lsp {
+                cmd_serve_lsp(
                     &index_path,
                     embedder,
                     model_path.as_deref(),
@@ -1164,6 +1180,141 @@ async fn serve_mcp_impl(
     anyhow::bail!(
         "本二进制未启用 mcp feature。重新构建：\n\
          \tcargo build -p arkui-rag-cli --features mcp --release\n\
+         （或 --features full 启用全套）"
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn cmd_serve_lsp(
+    index_path: &Path,
+    embedder_kind: EmbedderKind,
+    model_path: Option<&Path>,
+    mock_dim: usize,
+    bm25_kind: Bm25Kind,
+    vector_kind: VectorKind,
+    rerank_kind: RerankerKind,
+    pre_rerank_k: usize,
+    reranker_model_path: Option<&Path>,
+    reranker_model_id: &str,
+    hyde_kind: HydeKind,
+) -> anyhow::Result<()> {
+    serve_lsp_impl(
+        index_path,
+        embedder_kind,
+        model_path,
+        mock_dim,
+        bm25_kind,
+        vector_kind,
+        rerank_kind,
+        pre_rerank_k,
+        reranker_model_path,
+        reranker_model_id,
+        hyde_kind,
+    )
+    .await
+}
+
+#[cfg(feature = "lsp")]
+#[allow(clippy::too_many_arguments)]
+async fn serve_lsp_impl(
+    index_path: &Path,
+    embedder_kind: EmbedderKind,
+    model_path: Option<&Path>,
+    mock_dim: usize,
+    bm25_kind: Bm25Kind,
+    vector_kind: VectorKind,
+    rerank_kind: RerankerKind,
+    pre_rerank_k: usize,
+    reranker_model_path: Option<&Path>,
+    reranker_model_id: &str,
+    hyde_kind: HydeKind,
+) -> anyhow::Result<()> {
+    use arkui_rag_server::{serve_lsp_stdio, AppState};
+
+    match vector_kind {
+        VectorKind::Memory if !index_path.exists() => anyhow::bail!(
+            "索引文件不存在：{}（先跑 arkui-rag index）",
+            index_path.display()
+        ),
+        VectorKind::Lancedb if !lancedb_dir_from(index_path).exists() => anyhow::bail!(
+            "LanceDB 索引目录不存在：{}",
+            lancedb_dir_from(index_path).display()
+        ),
+        _ => {}
+    }
+
+    let vector_backend = match vector_kind {
+        VectorKind::Memory => VectorBackend::Memory(Arc::new(
+            InMemoryVectorStore::load_from(index_path).await?,
+        )),
+        VectorKind::Lancedb => build_vector_load(vector_kind, index_path, "unknown", mock_dim).await?,
+    };
+    let dim = vector_backend.dim().max(1);
+    let index_model_id = vector_backend.embedder_model_id().to_string();
+    let model_id_for_build = if matches!(vector_kind, VectorKind::Memory) {
+        index_model_id.as_str()
+    } else {
+        "bge-m3"
+    };
+    let (embedder, query_model_id, _query_dim) =
+        build_embedder(embedder_kind, model_path, model_id_for_build, dim).await?;
+
+    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
+    let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
+    let (enhancer, _hyde_name) = build_enhancer(hyde_kind);
+
+    let retriever: Arc<dyn arkui_rag_core::Retriever> =
+        Arc::new(HybridRetriever::new(embedder, vector_backend.as_store(), bm25));
+
+    let metadata_store: Option<Arc<dyn arkui_rag_storage::MetadataStore>> = match &vector_backend {
+        VectorBackend::Memory(s) => Some(s.clone()),
+        #[cfg(feature = "lancedb")]
+        VectorBackend::Lancedb(s) => Some(s.clone()),
+    };
+
+    let state = AppState {
+        retriever,
+        reranker: reranker_opt.map(|(r, _)| r),
+        enhancer,
+        metadata_store,
+        pre_rerank_k,
+        embedder_model_id: query_model_id,
+        embedder_dim: dim,
+        bm25_name: bm25_name.to_string(),
+        vector_name: vector_backend.name().to_string(),
+    };
+
+    // LSP 走 stdio · 启动信息走 stderr
+    eprintln!("🔌 LSP server starting on stdio (Content-Length framing · JSON-RPC 2.0)");
+    eprintln!(
+        "   embedder={} · bm25={} · vector={} · rerank={}",
+        state.embedder_model_id, state.bm25_name, state.vector_name,
+        if state.reranker.is_some() { "on" } else { "off" }
+    );
+    eprintln!("   custom methods: arkui-rag/search · arkui-rag/migrate (stub)");
+    eprintln!("   stub capability: textDocument/hover");
+    serve_lsp_stdio(state).await?;
+    Ok(())
+}
+
+#[cfg(not(feature = "lsp"))]
+#[allow(clippy::too_many_arguments)]
+async fn serve_lsp_impl(
+    _index_path: &Path,
+    _embedder_kind: EmbedderKind,
+    _model_path: Option<&Path>,
+    _mock_dim: usize,
+    _bm25_kind: Bm25Kind,
+    _vector_kind: VectorKind,
+    _rerank_kind: RerankerKind,
+    _pre_rerank_k: usize,
+    _reranker_model_path: Option<&Path>,
+    _reranker_model_id: &str,
+    _hyde_kind: HydeKind,
+) -> anyhow::Result<()> {
+    anyhow::bail!(
+        "本二进制未启用 lsp feature。重新构建：\n\
+         \tcargo build -p arkui-rag-cli --features lsp --release\n\
          （或 --features full 启用全套）"
     )
 }

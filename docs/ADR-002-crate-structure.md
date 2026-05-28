@@ -26,7 +26,7 @@
 | `arkui-rag-retrieval` | HybridRetriever + RRF + CrossEncoderReranker | core + storage + embedding |
 | `arkui-rag-indexer` | 索引流水线编排（walk → chunk → embed → store） | core + chunker + embedding + storage + walkdir |
 | **`arkui-rag-eval` (Day 6)** | 检索质量评估：recall@k + MRR + 延迟 + markdown 报告 | core + retrieval + serde_yaml |
-| `arkui-rag-server` | HTTP + MCP + LSP 适配 · **HTTP Day 14 + MCP Day 15 真活** | axum (feature `http`) · MCP 手撸 JSON-RPC · LSP Week 4 续 |
+| `arkui-rag-server` | HTTP + MCP + LSP 协议层 · **HTTP Day 14 + MCP Day 15 + LSP Day 16 三协议全部真活 ⭐** | axum (feature `http`) · MCP/LSP 手撸 JSON-RPC（LSP 含 Content-Length framing） |
 | `arkui-rag-cli` | 二进制入口 `arkui-rag` | 所有上游 crate |
 
 依赖图（单向）：

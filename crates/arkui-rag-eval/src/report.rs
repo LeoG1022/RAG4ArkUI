@@ -115,6 +115,7 @@ mod tests {
                 pre_rerank_k: 50,
                 index_path: "/tmp/idx.json".into(),
                 queries_path: "/tmp/q.yaml".into(),
+                hyde: "none".into(),
             },
             k: 5,
             total_queries: 2,

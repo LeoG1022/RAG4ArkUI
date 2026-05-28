@@ -73,6 +73,7 @@ async fn full_index_then_eval() {
         pre_rerank_k: 50,
         index_path: "in-memory".into(),
         queries_path: queries_path.to_string_lossy().to_string(),
+        hyde: "none".into(),
     };
     let summary = Evaluator::new(retriever)
         .with_k(5)
