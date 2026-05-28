@@ -59,6 +59,12 @@ tantivy = "0.22"
 tree-sitter = "0.22"
 tree-sitter-typescript = "0.21"
 
+# LanceDB 嵌入式向量库（storage crate 的 lancedb feature 用）
+lancedb = "0.10"
+arrow-array = "52"
+arrow-schema = "52"
+futures = "0.3"
+
 # HTTP server（server crate 用）
 axum = "0.8"
 tower = "0.5"

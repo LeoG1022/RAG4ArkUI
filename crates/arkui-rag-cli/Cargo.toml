@@ -37,5 +37,7 @@ tantivy = ["arkui-rag-storage/tantivy"]
 typescript = ["arkui-rag-chunker/typescript"]
 kotlin = ["arkui-rag-chunker/kotlin"]
 swift = ["arkui-rag-chunker/swift"]
-# 一键开全（向量 + BM25 + 全语言）
-full = ["onnx", "tantivy", "typescript", "kotlin", "swift"]
+# Day 9：启用后 --vector lancedb 可选，转发 arkui-rag-storage/lancedb
+lancedb = ["arkui-rag-storage/lancedb"]
+# 一键开全（向量 + BM25 + 全语言 + LanceDB）
+full = ["onnx", "tantivy", "typescript", "kotlin", "swift", "lancedb"]

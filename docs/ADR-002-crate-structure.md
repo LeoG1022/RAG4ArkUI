@@ -21,7 +21,7 @@
 |---|---|---|
 | `arkui-rag-core` | trait + 类型 + Error（无任何后端） | thiserror、serde、async-trait |
 | `arkui-rag-embedding` | Embedder + Reranker 实现（Mock + ONNX BGE-M3/BGE-Reranker） | ort (feature `onnx`)、tokenizers、ndarray |
-| `arkui-rag-storage` | VectorStore + BM25Index + MetadataStore traits + In-Memory + **TantivyBM25Index (Day 4)** | (Week 2 续：lancedb) |
+| `arkui-rag-storage` | VectorStore + BM25Index + MetadataStore traits + In-Memory · TantivyBM25Index (Day 4) · **LanceVectorStore (Day 9 · feature `lancedb`)** | tantivy / lancedb / arrow（全 feature gated） |
 | `arkui-rag-chunker` | ASTChunker 实现（Markdown + frontmatter + **tree-sitter Day 10**）+ ChunkerDispatcher | serde_yaml + tree-sitter / tree-sitter-typescript（feature gated） |
 | `arkui-rag-retrieval` | HybridRetriever + RRF + CrossEncoderReranker | core + storage + embedding |
 | `arkui-rag-indexer` | 索引流水线编排（walk → chunk → embed → store） | core + chunker + embedding + storage + walkdir |

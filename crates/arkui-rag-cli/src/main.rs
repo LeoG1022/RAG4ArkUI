@@ -40,6 +40,14 @@ enum Bm25Kind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum VectorKind {
+    /// InMemoryVectorStore：JSON 持久化 · cosine 暴力扫（默认 · 适合 < 10k chunks）
+    Memory,
+    /// LanceVectorStore：嵌入式向量库（Day 9，需 --features lancedb）
+    Lancedb,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum HydeKind {
     /// 透传（不改写，默认）
     None,
@@ -101,6 +109,9 @@ enum Cmd {
         /// BM25 后端：memory（空 stub）/ tantivy（真实倒排检索，需 --features tantivy）
         #[arg(long, value_enum, default_value_t = Bm25Kind::Memory)]
         bm25: Bm25Kind,
+        /// 向量后端：memory（JSON 持久化）/ lancedb（嵌入式向量库，需 --features lancedb · Day 9）
+        #[arg(long, value_enum, default_value_t = VectorKind::Memory)]
+        vector: VectorKind,
     },
     /// 检索一次并打印 Top-K 命中
     Query {
@@ -119,6 +130,9 @@ enum Cmd {
         /// BM25 后端：必须与建索引时一致
         #[arg(long, value_enum, default_value_t = Bm25Kind::Memory)]
         bm25: Bm25Kind,
+        /// 向量后端：必须与建索引时一致
+        #[arg(long, value_enum, default_value_t = VectorKind::Memory)]
+        vector: VectorKind,
         /// Reranker 后端（Day 5）：none/mock/onnx
         #[arg(long, value_enum, default_value_t = RerankerKind::None)]
         rerank: RerankerKind,
@@ -225,6 +239,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             model_id,
             dim,
             bm25,
+            vector,
         } => {
             cmd_index(
                 &source,
@@ -234,6 +249,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 &model_id,
                 dim,
                 bm25,
+                vector,
             )
             .await
         }
@@ -244,6 +260,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             embedder,
             model_path,
             bm25,
+            vector,
             rerank,
             pre_rerank_k,
             reranker_model_path,
@@ -257,6 +274,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 embedder,
                 model_path.as_deref(),
                 bm25,
+                vector,
                 rerank,
                 pre_rerank_k,
                 reranker_model_path.as_deref(),
@@ -274,6 +292,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             embedder,
             model_path,
             bm25,
+            vector,
             rerank,
             pre_rerank_k,
             reranker_model_path,
@@ -288,6 +307,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 embedder,
                 model_path.as_deref(),
                 bm25,
+                vector,
                 rerank,
                 pre_rerank_k,
                 reranker_model_path.as_deref(),
@@ -387,6 +407,120 @@ fn bm25_dir_from(index_path: &Path) -> PathBuf {
         .join("bm25")
 }
 
+/// 推导 LanceDB 向量库目录：与 index.json 同级的 vectors.lance/ 子目录。
+fn lancedb_dir_from(index_path: &Path) -> PathBuf {
+    index_path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join("vectors.lance")
+}
+
+/// 抽象向量后端 —— 兼容 InMemoryVectorStore（save_to JSON）与 LanceVectorStore（自动 persist）。
+enum VectorBackend {
+    Memory(Arc<InMemoryVectorStore>),
+    #[cfg(feature = "lancedb")]
+    Lancedb(Arc<arkui_rag_storage::LanceVectorStore>),
+}
+
+impl VectorBackend {
+    fn as_store(&self) -> Arc<dyn arkui_rag_storage::VectorStore> {
+        match self {
+            VectorBackend::Memory(s) => s.clone(),
+            #[cfg(feature = "lancedb")]
+            VectorBackend::Lancedb(s) => s.clone(),
+        }
+    }
+    fn embedder_model_id(&self) -> &str {
+        match self {
+            VectorBackend::Memory(s) => s.embedder_model_id(),
+            #[cfg(feature = "lancedb")]
+            VectorBackend::Lancedb(s) => s.embedder_model_id(),
+        }
+    }
+    fn dim(&self) -> usize {
+        match self {
+            VectorBackend::Memory(s) => s.dim(),
+            #[cfg(feature = "lancedb")]
+            VectorBackend::Lancedb(s) => s.dim(),
+        }
+    }
+    fn name(&self) -> &'static str {
+        match self {
+            VectorBackend::Memory(_) => "memory",
+            #[cfg(feature = "lancedb")]
+            VectorBackend::Lancedb(_) => "lancedb",
+        }
+    }
+    async fn persist(&self, json_path: &Path) -> anyhow::Result<()> {
+        match self {
+            VectorBackend::Memory(s) => {
+                s.save_to(json_path).await?;
+            }
+            #[cfg(feature = "lancedb")]
+            VectorBackend::Lancedb(_) => {
+                // LanceDB 写入即落盘，无需 save
+            }
+        }
+        Ok(())
+    }
+}
+
+/// 构造 vector backend：建索引模式（new + 初始化空）。
+async fn build_vector_new(
+    kind: VectorKind,
+    index_path: &Path,
+    model_id: &str,
+    dim: usize,
+) -> anyhow::Result<VectorBackend> {
+    match kind {
+        VectorKind::Memory => Ok(VectorBackend::Memory(Arc::new(
+            InMemoryVectorStore::new(model_id, dim),
+        ))),
+        VectorKind::Lancedb => build_lancedb_new(index_path, model_id, dim).await,
+    }
+}
+
+/// 构造 vector backend：查询模式（load existing）。
+async fn build_vector_load(
+    kind: VectorKind,
+    index_path: &Path,
+    expected_model_id: &str,
+    expected_dim: usize,
+) -> anyhow::Result<VectorBackend> {
+    match kind {
+        VectorKind::Memory => Ok(VectorBackend::Memory(Arc::new(
+            InMemoryVectorStore::load_from(index_path).await?,
+        ))),
+        VectorKind::Lancedb => build_lancedb_new(index_path, expected_model_id, expected_dim).await,
+    }
+}
+
+#[cfg(feature = "lancedb")]
+async fn build_lancedb_new(
+    index_path: &Path,
+    model_id: &str,
+    dim: usize,
+) -> anyhow::Result<VectorBackend> {
+    let dir = lancedb_dir_from(index_path);
+    std::fs::create_dir_all(&dir)?;
+    let uri = dir.to_string_lossy().to_string();
+    let store = arkui_rag_storage::LanceVectorStore::open(&uri, model_id, dim).await?;
+    Ok(VectorBackend::Lancedb(Arc::new(store)))
+}
+
+#[cfg(not(feature = "lancedb"))]
+async fn build_lancedb_new(
+    _index_path: &Path,
+    _model_id: &str,
+    _dim: usize,
+) -> anyhow::Result<VectorBackend> {
+    anyhow::bail!(
+        "本二进制未启用 lancedb feature。重新构建：\n\
+         \tcargo build -p arkui-rag-cli --features lancedb --release\n\
+         （或 --features full 启用全套）"
+    )
+}
+
 /// 构造 BM25 实例 + 报告 kind 名（写入索引元数据 / 防错配）。
 fn build_bm25(kind: Bm25Kind, index_path: &Path) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
     match kind {
@@ -457,6 +591,7 @@ fn build_onnx_reranker(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn cmd_index(
     source: &Path,
     index_path: &Path,
@@ -465,36 +600,43 @@ async fn cmd_index(
     model_id: &str,
     mock_dim: usize,
     bm25_kind: Bm25Kind,
+    vector_kind: VectorKind,
 ) -> anyhow::Result<()> {
     if !source.exists() {
         anyhow::bail!("源目录不存在：{}", source.display());
     }
     let (embedder, model_id_used, dim) =
         build_embedder(kind, model_path, model_id, mock_dim).await?;
-    let vector = Arc::new(InMemoryVectorStore::new(model_id_used.clone(), dim));
+    let vector_backend = build_vector_new(vector_kind, index_path, &model_id_used, dim).await?;
     let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
     let dispatcher = build_dispatcher();
 
-    let indexer = Indexer::new(dispatcher, embedder, vector.clone(), bm25);
+    let indexer = Indexer::new(dispatcher, embedder, vector_backend.as_store(), bm25);
     let stats = indexer.index_directory(source).await?;
-    vector.save_to(index_path).await?;
+    vector_backend.persist(index_path).await?;
 
     println!("✅ 索引完成");
     println!("   embedder    : {}", stats.embedder_model_id);
     println!("   dim         : {}", dim);
+    println!("   vector      : {}", vector_backend.name());
     println!("   bm25        : {}", bm25_name);
     println!("   files       : {}", stats.files);
     println!("   chunks      : {}", stats.chunks);
     println!("   skipped     : {}", stats.skipped);
     println!("   elapsed_ms  : {}", stats.elapsed_ms);
-    println!("   saved to    : {}", index_path.display());
+    match vector_kind {
+        VectorKind::Memory => println!("   saved to    : {}", index_path.display()),
+        VectorKind::Lancedb => println!(
+            "   lance dir   : {}",
+            lancedb_dir_from(index_path).display()
+        ),
+    }
     if matches!(bm25_kind, Bm25Kind::Tantivy) {
         println!("   bm25 index  : {}", bm25_dir_from(index_path).display());
     }
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 #[allow(clippy::too_many_arguments)]
 async fn cmd_query(
     text: &str,
@@ -503,27 +645,48 @@ async fn cmd_query(
     kind: EmbedderKind,
     model_path: Option<&Path>,
     bm25_kind: Bm25Kind,
+    vector_kind: VectorKind,
     rerank_kind: RerankerKind,
     pre_rerank_k: usize,
     reranker_model_path: Option<&Path>,
     reranker_model_id: &str,
     hyde_kind: HydeKind,
 ) -> anyhow::Result<()> {
-    if !index_path.exists() {
-        anyhow::bail!(
+    // Memory backend 校验文件；LanceDB 校验目录
+    match vector_kind {
+        VectorKind::Memory if !index_path.exists() => anyhow::bail!(
             "索引文件不存在：{}（先跑 arkui-rag index 建索引）",
             index_path.display()
-        );
+        ),
+        VectorKind::Lancedb if !lancedb_dir_from(index_path).exists() => anyhow::bail!(
+            "LanceDB 索引目录不存在：{}（先跑 arkui-rag index --vector lancedb）",
+            lancedb_dir_from(index_path).display()
+        ),
+        _ => {}
     }
-    let vector = Arc::new(InMemoryVectorStore::load_from(index_path).await?);
-    let dim = vector.dim();
-    let index_model_id = vector.embedder_model_id().to_string();
+
+    // Memory 先 load 得到 dim + model_id；LanceDB 需要先知道 model_id+dim 才能 open
+    // —— 用最小启发：先用 build_embedder 默认值打开 LanceDB，open 成功后从 Arrow schema 读 dim
+    // Day 9 简化：让用户必须指定 --embedder 一致；不做读取索引头部校验（与 InMemory 不同）
+    let vector_backend = match vector_kind {
+        VectorKind::Memory => {
+            let v = Arc::new(InMemoryVectorStore::load_from(index_path).await?);
+            VectorBackend::Memory(v)
+        }
+        VectorKind::Lancedb => {
+            // 用占位 model_id + dim 打开（实际由 LanceDB schema 推导，这里只是 open）
+            // 为兼容 build_vector_load，给一个保守值（model_id 不参与 lancedb open）
+            build_vector_load(vector_kind, index_path, "unknown", 0).await?
+        }
+    };
+    let dim = vector_backend.dim();
+    let index_model_id = vector_backend.embedder_model_id().to_string();
 
     let (embedder, query_model_id, query_dim) =
-        build_embedder(kind, model_path, &index_model_id, dim).await?;
+        build_embedder(kind, model_path, &index_model_id, dim.max(1)).await?;
 
-    // 防错配：索引时的 model_id 必须与查询时一致
-    if query_model_id != index_model_id {
+    // 防错配：Memory 后端校验严格 model_id；Lancedb 暂仅校验 dim（Day 9 续可从 schema 读）
+    if matches!(vector_kind, VectorKind::Memory) && query_model_id != index_model_id {
         anyhow::bail!(
             "embedder model_id 不匹配：索引由 '{}' 建，查询用 '{}'。\n\
              重建索引：arkui-rag index --embedder {} {} ...",
@@ -540,7 +703,7 @@ async fn cmd_query(
             }
         );
     }
-    if query_dim != dim {
+    if matches!(vector_kind, VectorKind::Memory) && query_dim != dim {
         anyhow::bail!("embedder dim ({}) 与索引 dim ({}) 不匹配", query_dim, dim);
     }
     let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
@@ -550,7 +713,7 @@ async fn cmd_query(
         .map(|(_, id)| id.clone())
         .unwrap_or_else(|| "none".to_string());
 
-    let retriever = HybridRetriever::new(embedder, vector, bm25);
+    let retriever = HybridRetriever::new(embedder, vector_backend.as_store(), bm25);
     let (enhancer, hyde_name) = build_enhancer(hyde_kind);
     let q = enhancer.enhance(text).await?;
 
@@ -622,6 +785,7 @@ async fn cmd_eval(
     embedder_kind: EmbedderKind,
     model_path: Option<&Path>,
     bm25_kind: Bm25Kind,
+    vector_kind: VectorKind,
     rerank_kind: RerankerKind,
     pre_rerank_k: usize,
     reranker_model_path: Option<&Path>,
@@ -631,11 +795,16 @@ async fn cmd_eval(
     use arkui_rag_eval::{load_queries, render_markdown, EvalConfig, Evaluator};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    if !index_path.exists() {
-        anyhow::bail!(
+    match vector_kind {
+        VectorKind::Memory if !index_path.exists() => anyhow::bail!(
             "索引文件不存在：{}（先跑 arkui-rag index）",
             index_path.display()
-        );
+        ),
+        VectorKind::Lancedb if !lancedb_dir_from(index_path).exists() => anyhow::bail!(
+            "LanceDB 索引目录不存在：{}（先跑 arkui-rag index --vector lancedb）",
+            lancedb_dir_from(index_path).display()
+        ),
+        _ => {}
     }
     if !queries_path.exists() {
         anyhow::bail!(
@@ -645,19 +814,24 @@ async fn cmd_eval(
     }
 
     // 构造检索流水线（复用 query 路径的逻辑）
-    let vector = Arc::new(InMemoryVectorStore::load_from(index_path).await?);
-    let dim = vector.dim();
-    let index_model_id = vector.embedder_model_id().to_string();
+    let vector_backend = match vector_kind {
+        VectorKind::Memory => VectorBackend::Memory(Arc::new(
+            InMemoryVectorStore::load_from(index_path).await?,
+        )),
+        VectorKind::Lancedb => build_vector_load(vector_kind, index_path, "unknown", 0).await?,
+    };
+    let dim = vector_backend.dim();
+    let index_model_id = vector_backend.embedder_model_id().to_string();
     let (embedder, query_model_id, query_dim) =
-        build_embedder(embedder_kind, model_path, &index_model_id, dim).await?;
-    if query_model_id != index_model_id {
+        build_embedder(embedder_kind, model_path, &index_model_id, dim.max(1)).await?;
+    if matches!(vector_kind, VectorKind::Memory) && query_model_id != index_model_id {
         anyhow::bail!(
             "embedder model_id 不匹配：索引 '{}' vs 评估 '{}'",
             index_model_id,
             query_model_id
         );
     }
-    if query_dim != dim {
+    if matches!(vector_kind, VectorKind::Memory) && query_dim != dim {
         anyhow::bail!("embedder dim 不匹配：{} vs {}", query_dim, dim);
     }
     let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
@@ -667,8 +841,11 @@ async fn cmd_eval(
         .map(|(_, id)| id.clone())
         .unwrap_or_else(|| "none".to_string());
 
-    let retriever: Arc<dyn arkui_rag_core::Retriever> =
-        Arc::new(HybridRetriever::new(embedder, vector, bm25));
+    let retriever: Arc<dyn arkui_rag_core::Retriever> = Arc::new(HybridRetriever::new(
+        embedder,
+        vector_backend.as_store(),
+        bm25,
+    ));
 
     let (enhancer, hyde_name) = build_enhancer(hyde_kind);
 

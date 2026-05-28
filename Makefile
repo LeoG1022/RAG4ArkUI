@@ -5,7 +5,7 @@
 CARGO ?= cargo
 CRATES_DIR := crates
 
-.PHONY: help install-rust check check-onnx check-tantivy check-treesitter build build-onnx build-tantivy build-treesitter build-full test fmt clippy clean corpus-init smoke
+.PHONY: help install-rust check check-onnx check-tantivy check-treesitter check-lancedb build build-onnx build-tantivy build-treesitter build-lancedb build-full test fmt clippy clean corpus-init smoke
 
 help:
 	@echo "RAG4ArkUI — 可用 target"
@@ -19,6 +19,8 @@ help:
 	@echo "  make check-tantivy  cargo check -p arkui-rag-storage --features tantivy"
 	@echo "  make check-treesitter  cargo check -p arkui-rag-chunker --features typescript (Day 10)"
 	@echo "  make build-treesitter  cargo build CLI with tree-sitter ArkTS chunker (Day 10)"
+	@echo "  make check-lancedb     cargo check -p arkui-rag-storage --features lancedb (Day 9)"
+	@echo "  make build-lancedb     cargo build CLI with LanceDB vector store (Day 9)"
 	@echo "  make test           cargo test --workspace"
 	@echo "  make smoke          端到端冒烟：index + query 真实跑通（用 /tmp 临时 corpus）"
 	@echo "  make fmt            cargo fmt --all"
@@ -61,6 +63,12 @@ check-treesitter: install-rust
 
 build-treesitter: install-rust
 	cd $(CRATES_DIR) && $(CARGO) build -p arkui-rag-cli --features typescript --release
+
+build-lancedb: install-rust
+	cd $(CRATES_DIR) && $(CARGO) build -p arkui-rag-cli --features lancedb --release
+
+check-lancedb: install-rust
+	cd $(CRATES_DIR) && $(CARGO) check -p arkui-rag-storage --features lancedb
 
 test: install-rust
 	cd $(CRATES_DIR) && $(CARGO) test --workspace

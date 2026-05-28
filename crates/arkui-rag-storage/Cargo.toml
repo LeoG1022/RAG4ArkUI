@@ -17,6 +17,10 @@ serde_json = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tantivy = { workspace = true, optional = true }
+lancedb = { workspace = true, optional = true }
+arrow-array = { workspace = true, optional = true }
+arrow-schema = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = "3.13"
@@ -24,7 +28,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
 default = []
-# Week 2 起：启用 LanceDB / Tantivy 真实集成
-lancedb = []
 # Day 4：启用 Tantivy（真实 BM25 倒排检索）
 tantivy = ["dep:tantivy"]
+# Day 9：启用 LanceDB（嵌入式向量库，解锁 chunks > 10k）
+lancedb = ["dep:lancedb", "dep:arrow-array", "dep:arrow-schema", "dep:futures"]
