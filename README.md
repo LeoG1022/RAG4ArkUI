@@ -10,23 +10,47 @@
 - **本地化部署**：单 Rust 二进制 + ONNX Runtime + LanceDB / Tantivy，零云依赖
 - **协议统一**：MCP（Claude Code / Cursor）+ HTTP（IDE 插件）+ LSP，同一二进制四种形态
 
-## 当前状态：Day 1 骨架
+## 当前状态：Day 20（Week 6 开局）
 
-仓库目前处于 **Cargo workspace 骨架阶段**：
-- `crates/` 7 个 crate 的接口契约就位（trait + 类型 + stub）
-- `crates/arkui-rag-embedding` 已带 §7.2 的完整 BGE-M3 ONNX 代码（feature-gated）
-- `corpus/` 5 个子目录待用户投放文档
-- 3 份 ADR + 完整的 feature log 归档
+协议层 3/3 完整 ⭐ + 本地端到端 release artifact 可用：
 
-距离 MVP 还有 5 周（详见技术方案附录 A.2 路线图）。
+- ✅ Week 1-3：Rust 骨架 + BGE-M3 + LanceDB + Tantivy + Hybrid + Reranker + HyDE + 评估
+- ✅ Week 4：HTTP (Day 14) + MCP (Day 15) + LSP (Day 16) 三协议全部真活
+- ✅ Week 5：Claude Code 接入指南 + MCP demo（Day 19）
+- ✅ Week 6 起步：**Day 20 本地 release** 单文件 6.7 MB 跨协议二进制
 
-## 快速开始
+距离 1.0 release 还差 corpus 分发管道（Day 21）+ 文档站（Day 22）。完整路线图见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。
+
+## 下载（本地 host · CI matrix 待 Day 20 续）
+
+```bash
+make release-local-verify      # 编译 + 打包 + 解压验证一条龙
+# 产物：dist/arkui-rag-v0.0.1-<host-triple>.tar.gz
+```
+
+解压后单文件即用（macOS 仅依赖 libSystem · 无外部依赖）：
+
+```bash
+tar -xzf dist/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
+cd arkui-rag-v0.0.1-aarch64-apple-darwin
+./arkui-rag --version                                          # arkui-rag 0.0.1
+./arkui-rag index --source ./my-corpus --bm25 tantivy ...      # 建索引
+./arkui-rag query --text "..."                                 # 检索
+./arkui-rag serve --mcp                                        # Claude Code 接入
+./arkui-rag serve --http --addr 127.0.0.1:7654                 # HTTP REST
+./arkui-rag serve --lsp                                        # IDE LSP
+```
+
+完整 Release 指南：[`docs/RELEASE.md`](docs/RELEASE.md)。
+
+## 快速开始（开发者 · 从源码）
 
 ```bash
 make install-rust            # 检查 / 提示安装 rust 工具链
 make check                   # cargo check --workspace（默认 features，不含 ONNX）
 make check-onnx              # 启用 onnx feature 后编译 embedding crate（首次较慢）
 make corpus-init             # 确保 corpus/ 子目录存在
+make smoke                   # 端到端冒烟（index + query 真实跑通）
 ```
 
 更多入口见 [`Makefile`](Makefile) 与 [`crates/README.md`](crates/README.md)。

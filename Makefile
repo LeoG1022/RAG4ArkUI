@@ -5,7 +5,7 @@
 CARGO ?= cargo
 CRATES_DIR := crates
 
-.PHONY: help install-rust check check-onnx check-tantivy check-treesitter check-lancedb check-http check-mcp check-lsp build build-onnx build-tantivy build-treesitter build-lancedb build-http build-mcp build-lsp build-full test fmt clippy clean corpus-init smoke serve-demo serve-mcp-demo serve-lsp-demo mcp-demo
+.PHONY: help install-rust check check-onnx check-tantivy check-treesitter check-lancedb check-http check-mcp check-lsp build build-onnx build-tantivy build-treesitter build-lancedb build-http build-mcp build-lsp build-full test fmt clippy clean corpus-init smoke serve-demo serve-mcp-demo serve-lsp-demo mcp-demo release-local release-local-verify
 
 help:
 	@echo "RAG4ArkUI — 可用 target"
@@ -37,6 +37,8 @@ help:
 	@echo "  make clippy         cargo clippy --workspace --all-targets"
 	@echo "  make clean          cargo clean"
 	@echo "  make corpus-init    确保 corpus/ 5 个子目录存在并提示用户投放文档"
+	@echo "  make release-local         本地打 release tarball 到 dist/ (Day 20)"
+	@echo "  make release-local-verify  打包 + 解压 + 跑 --version 验证（Day 20）"
 
 install-rust:
 	@command -v cargo >/dev/null 2>&1 && echo "✅ 已安装：$$(cargo --version)" || { \
@@ -131,3 +133,16 @@ clean:
 corpus-init:
 	@mkdir -p corpus/official corpus/samples corpus/migration corpus/errors corpus/custom
 	@echo "✅ corpus/ 5 个子目录就绪。请按 corpus/README.md 投放文档。"
+
+# Day 20: 本地 release artifact（host 平台 · 跨平台 CI matrix 留 Day 20 续）
+release-local: install-rust
+	bash scripts/release-local.sh
+
+# 打包 + 解压 + 跑 --version + query 自验证
+release-local-verify: release-local
+	@echo ""
+	@echo "━━━ 解压验证 ━━━"
+	@rm -rf /tmp/arkui-rag-release-verify && mkdir -p /tmp/arkui-rag-release-verify
+	@tar -xzf dist/arkui-rag-v0.0.1-$$(rustc -vV | awk '/^host:/ {print $$2}').tar.gz -C /tmp/arkui-rag-release-verify
+	@/tmp/arkui-rag-release-verify/arkui-rag-v0.0.1-$$(rustc -vV | awk '/^host:/ {print $$2}')/arkui-rag --version
+	@echo "✅ release tarball 端到端可用"
