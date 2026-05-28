@@ -13,7 +13,9 @@ use arkui_rag_core::{
 };
 use arkui_rag_embedding::MockEmbedder;
 use arkui_rag_indexer::Indexer;
-use arkui_rag_retrieval::{CrossEncoderReranker, HybridRetriever, MockHydeEnhancer};
+use arkui_rag_retrieval::{
+    ContextAssembler, CrossEncoderReranker, HybridRetriever, MockHydeEnhancer,
+};
 use arkui_rag_storage::{BM25Index, InMemoryBM25Index, InMemoryVectorStore};
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::{Path, PathBuf};
@@ -148,6 +150,9 @@ enum Cmd {
         /// Query 改写器（Day 7）：none/mock（MockHyde 生成 ArkTS 假代码）
         #[arg(long, value_enum, default_value_t = HydeKind::None)]
         hyde: HydeKind,
+        /// Day 11：扩展到父 chunk 显示（检索小返回大 · 方案 §1.4）
+        #[arg(long, default_value_t = false)]
+        expand_parent: bool,
     },
     /// Corpus 管理
     Corpus {
@@ -266,6 +271,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             reranker_model_path,
             reranker_model_id,
             hyde,
+            expand_parent,
         } => {
             cmd_query(
                 &text,
@@ -280,6 +286,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 reranker_model_path.as_deref(),
                 &reranker_model_id,
                 hyde,
+                expand_parent,
             )
             .await
         }
@@ -651,6 +658,7 @@ async fn cmd_query(
     reranker_model_path: Option<&Path>,
     reranker_model_id: &str,
     hyde_kind: HydeKind,
+    expand_parent: bool,
 ) -> anyhow::Result<()> {
     // Memory backend 校验文件；LanceDB 校验目录
     match vector_kind {
@@ -741,13 +749,28 @@ async fn cmd_query(
         return Ok(());
     }
 
+    // Day 11：可选展开到父 chunk（方案 §1.4 标准）
+    // vector_backend 实现了 MetadataStore（InMemory 和 Lancedb 都是双 trait）
+    let expanded: Option<Vec<arkui_rag_retrieval::ExpandedHit>> = if expand_parent {
+        let meta_store: Arc<dyn arkui_rag_storage::MetadataStore> = match &vector_backend {
+            VectorBackend::Memory(s) => s.clone(),
+            #[cfg(feature = "lancedb")]
+            VectorBackend::Lancedb(s) => s.clone(),
+        };
+        let assembler = ContextAssembler::new(meta_store);
+        Some(assembler.expand_to_parent(hits.clone()).await?)
+    } else {
+        None
+    };
+
     println!(
-        "✅ Top-{} hits (embedder={} · bm25={} · rerank={} · hyde={})",
+        "✅ Top-{} hits (embedder={} · bm25={} · rerank={} · hyde={}{})",
         hits.len(),
         query_model_id,
         bm25_name,
         rerank_name,
-        hyde_name
+        hyde_name,
+        if expand_parent { " · expand-parent=on" } else { "" }
     );
     println!();
     for (i, h) in hits.iter().enumerate() {
@@ -771,6 +794,26 @@ async fn cmd_query(
             preview,
             if h.chunk.content.len() > 200 { "…" } else { "" }
         );
+        // Day 11：父 chunk 上下文（如果启用 --expand-parent）
+        if let Some(exps) = &expanded {
+            if let Some(parent) = exps.get(i).and_then(|e| e.parent.as_ref()) {
+                let parent_lines = parent
+                    .metadata
+                    .line_range
+                    .map(|(a, b)| format!("L{}-{}", a, b))
+                    .unwrap_or_else(|| "L?".to_string());
+                let parent_head = if parent.metadata.heading_path.is_empty() {
+                    "(root)".to_string()
+                } else {
+                    parent.metadata.heading_path.join(" > ")
+                };
+                let parent_prev: String = parent.content.chars().take(200).collect();
+                let parent_prev = parent_prev.replace('\n', " ");
+                println!("  ↳ parent ({} {}): {}", parent_head, parent_lines, parent_prev);
+            } else {
+                println!("  ↳ parent: none");
+            }
+        }
         println!();
     }
     Ok(())

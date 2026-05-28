@@ -2,18 +2,18 @@
 
 > **文档定位**：项目长期维护文档（类似 ADR / README），跨阶段全景视图。
 > **维护约定**：每个 Day 完成 commit 后，agent **同步更新本文档的进度标记**（不单独 commit）；新阶段补充进度行；不在本文档归档单次 round 的细节（那些去 STATUS-<slug>.md）。
-> **最后更新**：Day 9 完成（2026-05-27 · commit pending · LanceDB 嵌入式向量库）
+> **最后更新**：Day 11 完成（2026-05-28 · commit pending · Parent-Child 父子索引）
 
 ---
 
 ## 📍 当前位置
 
-**Day 9 完成 · LanceDB 嵌入式向量库真活 · Week 1 全部缺口补齐 · 9 crate 接口稳定**
+**Day 11 完成 · Parent-Child 父子索引就位 · 方案 §1.4 标准 "检索小返回大" 落地**
 
 - 9 个 Cargo crate
-- 默认 features 测试约 44 个 + typescript +7 + tantivy +7 + lancedb +5 + onnx +1（最多 64）
-- 8 个 STATUS 文档（规则 #17 生效后强制配套）
-- 15 个 git commit / 历史 8 个工作 Day
+- 默认 features 测试约 49（+ContextAssembler 5）· 全 feature 约 69
+- 9 个 STATUS 文档（规则 #17 生效后强制配套）
+- 16 个 git commit / 历史 9 个工作 Day
 
 ---
 
@@ -40,15 +40,15 @@ gantt
     检索质量评估                     :done,    d6, after d5, 2d
     HyDE 改写器                      :done,    d7, after d6, 1d
     tree-sitter (代码切分)           :done,    d10, after d7, 2d
-    LanceDB (Week 1 收尾 · 当前)     :active,  d9, after d10, 2d
+    LanceDB (Week 1 收尾)            :done,    d9, after d10, 2d
+    Parent-Child 父子索引 (当前)     :active,  d11, after d9, 1d
 
     section ⏳ Week 2 末
-    tantivy-jieba 中文升级           :         d8, after d9, 1d
-    Parent-Child 父子索引            :         d11, after d8, 1d
+    tantivy-jieba 中文升级           :         d8, after d11, 1d
 
     section ⏳ Week 3 (规模化 + 流水线)
-    Query Router + Intent           :         d12, after d11, 1d
-    ContextAssembler 真活            :         d13, after d12, 1d
+    Query Router + Intent           :         d12, after d8, 1d
+    ContextAssembler 全功能          :         d13, after d12, 1d
 
     section ⏳ Week 4 (协议层)
     HTTP/REST Server                :         d14, after d13, 2d
@@ -86,19 +86,20 @@ gantt
 | `0228109` | — | 11 | ROADMAP 全景图归档 | [STATUS-roadmap](STATUS-roadmap-doc.md) |
 | `6969cba` | 7 | 12 | HyDE 改写器（QueryEnhancer trait + MockHyde） | [STATUS-day7](STATUS-day7-hyde.md) |
 | `ab869ba` | 10 | 13 | tree-sitter ArkTS/TS 代码切分 + ChunkerDispatcher 路由 + Indexer 重构 | [STATUS-day10](STATUS-day10-tree-sitter.md) |
-| _(本 commit)_ | **9 (当前)** | **14** | **LanceDB 嵌入式向量库**（VectorBackend 抽象 · CLI --vector · Week 1 全部缺口补齐） | [STATUS-day9](STATUS-day9-lancedb.md) |
+| `d7301e1` | 9 | 14 | LanceDB 嵌入式向量库（VectorBackend 抽象 · Week 1 全部达成 ⭐） | [STATUS-day9](STATUS-day9-lancedb.md) |
+| _(本 commit)_ | **11 (当前)** | **15** | **Parent-Child 父子索引** + ContextAssembler + CLI --expand-parent | [STATUS-day11](STATUS-day11-parent-child.md) |
 
 ---
 
 ## ⏳ 剩余切片（按推荐顺序）
 
-### 🟢 Week 2 末 · 检索质量纵深（2 个切片，Day 7 已完成）
+### 🟢 Week 2 末 · 检索质量纵深（Day 7 + Day 11 已完成 · 1 个剩余）
 
 | Day | 切片 | 价值 | 工作量 | 依赖 |
 |---|---|---|---|---|
 | ~~7~~ | ~~HyDE 改写器~~ | ✅ **Day 7 完成**（MockHyde 真活，远程 LLM 接入留 Week 3） | — | — |
+| ~~11~~ | ~~Parent-Child 父子索引~~ | ✅ **Day 11 完成**（Chunker + ContextAssembler + CLI --expand-parent） | — | — |
 | 8 推荐 | tantivy-jieba 中文分词 | 中文 BM25 精度从 ngram 升级；评估集可量化提升 | 0.5 commit | Day 4 ✓ |
-| 11 | Parent-Child 父子索引 | 检索小、返回大（方案 §1.4 标准） | 1 commit | Day 6 ✓ |
 
 ### 🟡 Week 3 · 规模化 + 流水线收尾（Day 9 + Day 10 已完成）
 
@@ -166,7 +167,7 @@ gantt
 | Week 5: Claude Code 接入 | **0/1** ⏳ | — |
 | Week 6: 自动安装 + corpus 分发 + 文档 + 评估报告 | **1/4** ✅ | 评估报告 ✓ |
 
-**当前完成度估算：~50%**（Week 1 + Week 2 全部达成 · 9 crate 接口稳定 · 规模化能力就位）。
+**当前完成度估算：~55%**（Week 1 + Week 2 全部达成 · Parent-Child 标准就位 · 9 crate 接口稳定）。
 
 ---
 
@@ -191,8 +192,9 @@ gantt
 | ✅ Hybrid + Rerank + Eval 基线 | 12 | 11 |
 | ✅ Week 2 全部达成（+ HyDE） | 13 | 12 |
 | ✅ 代码 corpus 真活（tree-sitter ArkTS） | 14 | 13 |
-| ✅ Week 1 全部达成（+ LanceDB · **当前位置**） | 15 | 14 |
-| 完整检索能力（Parent-Child + Query Router + ContextAssembler） | +3 | 17 |
+| ✅ Week 1 全部达成（+ LanceDB） | 15 | 14 |
+| ✅ Parent-Child 标准（**当前位置**） | 16 | 15 |
+| 完整检索能力（Query Router + ContextAssembler 全功能） | +2 | 17 |
 | 协议层完整（HTTP + MCP + LSP） | +12 | 28 |
 | 首个 IDE 插件 MVP（DevEco） | +8 | 36 |
 | 公开 release 1.0 | +5 | 41 |
@@ -210,7 +212,9 @@ Day 7 HyDE ✓
    ↓
 Day 10 tree-sitter ✓（代码 corpus 解锁）
    ↓
-Day 9 LanceDB ✓（Week 1 全部达成 · 当前位置）
+Day 9 LanceDB ✓（Week 1 全部达成）
+   ↓
+Day 11 Parent-Child ✓（方案 §1.4 标准 · 当前位置）
    ↓
 Day 14 HTTP Server
    ↓

@@ -58,7 +58,9 @@ impl ASTChunker for MarkdownChunker {
         let (frontmatter, body, line_offset) = split_frontmatter(content)?;
         let lines: Vec<&str> = body.lines().collect();
         let mut chunks: Vec<Chunk> = Vec::new();
-        let mut heading_stack: Vec<(usize, String)> = Vec::new();
+        // (level, title, chunk_id) —— chunk_id 在当前 heading flush 时填入栈顶
+        // Day 11：父子索引 —— 子 chunk 的 parent_id = 栈中前一层的 chunk_id
+        let mut heading_stack: Vec<(usize, String, Option<ChunkId>)> = Vec::new();
         let mut cur_start: usize = 0;
         let mut cur_path: Vec<String> = Vec::new();
 
@@ -80,17 +82,30 @@ impl ASTChunker for MarkdownChunker {
                     if !body_slice.trim().is_empty() {
                         let abs_start = (cur_start as u32) + 1 + line_offset;
                         let abs_end = (idx as u32) + line_offset;
+                        // 父 chunk = 栈顶上一层（heading_stack 在 pop 后栈顶就是直接父级）
+                        // 当前正要 flush 的 chunk 对应 heading_stack 最后一项（即"当前作用域"）
+                        // 父 = 倒数第 2 项
+                        let parent_id = if heading_stack.len() >= 2 {
+                            heading_stack[heading_stack.len() - 2].2.clone()
+                        } else {
+                            None
+                        };
                         let mut md = ChunkMetadata {
                             source: source_path.to_string(),
                             heading_path: cur_path.clone(),
                             line_range: Some((abs_start, abs_end)),
                             r#type: ChunkType::Generic,
+                            parent_id,
                             ..ChunkMetadata::default()
                         };
                         if let Some(fm) = &frontmatter {
                             fm.apply_to(&mut md);
                         }
                         let id = MarkdownChunker::make_id(source_path, &cur_path, abs_start);
+                        // 把刚生成的 chunk_id 写回栈顶 → 让"我"成为后续子 chunk 的 parent
+                        if let Some(last) = heading_stack.last_mut() {
+                            last.2 = Some(id.clone());
+                        }
                         chunks.push(Chunk {
                             id,
                             content: body_slice,
@@ -101,11 +116,14 @@ impl ASTChunker for MarkdownChunker {
                 if is_sentinel {
                     break;
                 }
-                while heading_stack.last().map_or(false, |(lv, _)| *lv >= level) {
+                while heading_stack
+                    .last()
+                    .map_or(false, |(lv, _, _)| *lv >= level)
+                {
                     heading_stack.pop();
                 }
-                heading_stack.push((level, title.clone()));
-                cur_path = heading_stack.iter().map(|(_, t)| t.clone()).collect();
+                heading_stack.push((level, title.clone(), None));
+                cur_path = heading_stack.iter().map(|(_, t, _)| t.clone()).collect();
                 cur_start = idx + 1;
             }
         }
