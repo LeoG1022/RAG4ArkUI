@@ -90,7 +90,8 @@ gantt
 | `d7301e1` | 9 | 14 | LanceDB 嵌入式向量库（VectorBackend 抽象 · Week 1 全部达成 ⭐） | [STATUS-day9](STATUS-day9-lancedb.md) |
 | `e2a7129` | 11 | 15 | Parent-Child 父子索引 + ContextAssembler + CLI --expand-parent | [STATUS-day11](STATUS-day11-parent-child.md) |
 | `af19208` | 14 | 16 | HTTP/REST Server（axum · /search /health /corpus/list · 5 集成测） | [STATUS-day14](STATUS-day14-http.md) |
-| _(本 commit)_ | **15 (当前)** | **17** | **MCP Server**（JSON-RPC stdio · 4 tools · Claude Code 直接接入 ⭐） | [STATUS-day15](STATUS-day15-mcp.md) |
+| `f4724cc` | 15 | 17 | MCP Server（JSON-RPC stdio · 4 tools · Claude Code 接入就绪） | [STATUS-day15](STATUS-day15-mcp.md) |
+| _(本 commit)_ | **19 (当前)** | **18** | **Claude Code 接入验证**（接入指南 10 节 + bash 端到端 demo · Week 5 1/1 ⭐） | [STATUS-day19](STATUS-day19-claude-code.md) |
 
 ---
 

@@ -1,6 +1,6 @@
 # rag4arkui-core
 
-> 状态：in-progress (Day 15 MCP Server 真活 · **协议层基本完整** · Claude Code 接入就绪 ⭐)
+> 状态：in-progress (Day 19 接入指南就绪 · **Claude Code 接入完整闭环** · 完成度 ~70%)
 > 创建：2026-05-27
 
 ## 用途
@@ -41,3 +41,4 @@
 - [15-2026-05-28-day11-parent-child.md](15-2026-05-28-day11-parent-child.md) — Day 11 Parent-Child 父子索引（Chunker 自动填 parent_id + ContextAssembler + CLI --expand-parent · 方案 §1.4 标准）· STATUS：`docs/STATUS-day11-parent-child.md`
 - [16-2026-05-28-day14-http.md](16-2026-05-28-day14-http.md) — Day 14 HTTP/REST Server（axum 真活 · /search /health /corpus/list + AppState 抽象 · 关键路径起点突破 ⭐）· STATUS：`docs/STATUS-day14-http.md`
 - [17-2026-05-28-day15-mcp.md](17-2026-05-28-day15-mcp.md) — Day 15 MCP Server（手撸 JSON-RPC stdio · 4 tools · **Claude Code 接入就绪 · Week 3 协议层 3/3 ⭐**）· STATUS：`docs/STATUS-day15-mcp.md`
+- [18-2026-05-28-day19-claude-code.md](18-2026-05-28-day19-claude-code.md) — Day 19 Claude Code 接入验证（接入指南 10 节 + bash 端到端 demo · **Week 5 1/1 ⭐ · ~70%**）· STATUS：`docs/STATUS-day19-claude-code.md`
