@@ -1,71 +1,62 @@
 # RAG4ArkUI
 
-> 面向 OpenHarmony / ArkUI-X 的本地化 RAG 代码生成与迁移系统。
+> 面向 OpenHarmony / ArkUI-X 的**本地化** RAG 代码生成与迁移系统。  
+> 单 Rust 二进制 · 三协议（MCP / HTTP / LSP）· 零云依赖。
 
-## 项目愿景
+三大差异化：
 
-`RAG4ArkUI` 是一套**纯本地**的检索引擎，专门服务 ArkUI-X / OpenHarmony 开发场景。完整规约见 [`docs/RAG4ArkUI-完整技术方案.md`](docs/RAG4ArkUI-完整技术方案.md)。三大差异化护城河：
+- **领域语料** · 官方文档 + 代码示例 + 迁移规则 + XDB 错误回流
+- **本地化部署** · 11 MB binary · 仅依赖系统库（macOS libSystem · Linux glibc）
+- **协议统一** · 同一二进制服务 Claude Code / Cursor / DevEco / VSCode / IDE 插件
 
-- **领域语料**：官方文档 + 代码示例 + 迁移规则 + XDB 错误回流
-- **本地化部署**：单 Rust 二进制 + ONNX Runtime + LanceDB / Tantivy，零云依赖
-- **协议统一**：MCP（Claude Code / Cursor）+ HTTP（IDE 插件）+ LSP，同一二进制四种形态
-
-## 当前状态：Day 20b（Week 6 中段）
-
-协议层 3/3 完整 ⭐ + 本地 release + **4 平台 CI matrix 自动 release** ⭐：
-
-- ✅ Week 1-3：Rust 骨架 + BGE-M3 + LanceDB + Tantivy + Hybrid + Reranker + HyDE + 评估
-- ✅ Week 4：HTTP (Day 14) + MCP (Day 15) + LSP (Day 16) 三协议全部真活
-- ✅ Week 5：Claude Code 接入指南 + MCP demo（Day 19）
-- ✅ Week 6 起步：Day 20a 本地 release + **Day 20b CI matrix 自动 release**（tag `v*` 触发 · 4 平台 build · GitHub Releases 自动上传）
-
-距离 1.0 release 还差 corpus 分发管道（Day 21）+ 文档站（Day 22）。完整路线图见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。
-
-## 下载
+## 60 秒上手
 
 ```bash
-# 方式 A：从 GitHub Releases 下（推荐 · CI matrix 已就绪 · 4 平台自动构建）
+# 1. 下载（macOS Apple Silicon 示例 · 其它平台见 docs/RELEASE.md）
 curl -LO https://github.com/LeoG1022/RAG4ArkUI/releases/download/v0.0.1/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
+tar -xzf arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz && cd arkui-rag-v0.0.1-aarch64-apple-darwin
 
-# 方式 B：本地构建（开发者 · 当前 host 平台）
-make release-local-verify      # 编译 + 打包 + 解压验证一条龙
-# 产物：dist/arkui-rag-v0.0.1-<host-triple>.tar.gz
+# 2. 投放 corpus（或 ./arkui-rag corpus pull · 见 docs/RELEASE.md）
+mkdir -p ./corpus && cp /your/docs/*.md ./corpus/
+
+# 3. 建索引 + 检索
+./arkui-rag index --source ./corpus --index-path ./index.json --bm25 tantivy
+./arkui-rag query --text "..." --index-path ./index.json --bm25 tantivy -k 5
+
+# 4. 启常驻服务（三选一 · 互斥）
+./arkui-rag serve --mcp  --index-path ./index.json --bm25 tantivy   # Claude Code / Cursor
+./arkui-rag serve --http --index-path ./index.json --bm25 tantivy   # IDE 插件 / curl
+./arkui-rag serve --lsp  --index-path ./index.json --bm25 tantivy   # DevEco / IntelliJ
 ```
 
-解压后单文件即用（macOS 仅依赖 libSystem · 无外部依赖）：
+## 文档导航
+
+| 我想… | 看哪 |
+|---|---|
+| 📖 **完整文档站**（mdBook · 全文搜索） | https://LeoG1022.github.io/RAG4ArkUI/ |
+| ✅ 自己跑一遍 9 步端到端验证 | [`docs/USER-VERIFICATION.md`](docs/USER-VERIFICATION.md) |
+| 📦 下载 / Release / 跨平台 | [`docs/RELEASE.md`](docs/RELEASE.md) |
+| 🤖 接 Claude Code / Cursor (MCP) | [`docs/MCP-INTEGRATION-CLAUDE-CODE.md`](docs/MCP-INTEGRATION-CLAUDE-CODE.md) |
+| 🗺 6 周路线图 + 当前进度 | [`docs/ROADMAP.md`](docs/ROADMAP.md) |
+| 📐 完整技术方案（78 KB · 2258 行） | [`docs/RAG4ArkUI-完整技术方案.md`](docs/RAG4ArkUI-完整技术方案.md) |
+| 🔤 术语对照表 | [`docs/GLOSSARY.md`](docs/GLOSSARY.md) |
+
+## 当前状态
+
+**~92% MVP** · 协议层 3/3 完整（HTTP + MCP + LSP）· lancedb 端到端可用 · 4 平台 CI release matrix · mdBook 文档站。  
+完整进度见 [`docs/ROADMAP.md`](docs/ROADMAP.md)。
+
+## 开发者：从源码
 
 ```bash
-tar -xzf dist/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
-cd arkui-rag-v0.0.1-aarch64-apple-darwin
-./arkui-rag --version                                          # arkui-rag 0.0.1
-
-# Day 21：一键拉取默认 corpus（无需手动投放文档）
-./arkui-rag corpus pull --target ./corpus/official
-
-# 建索引 + 检索
-./arkui-rag index --source ./corpus/official --bm25 tantivy --index-path ./corpus/official/index.json
-./arkui-rag query --text "@State 双向绑定" --index-path ./corpus/official/index.json --bm25 tantivy -k 5
-
-# 三协议服务
-./arkui-rag serve --mcp                                        # Claude Code 接入
-./arkui-rag serve --http --addr 127.0.0.1:7654                 # HTTP REST
-./arkui-rag serve --lsp                                        # IDE LSP
+make install-rust          # 检查 / 提示装 rust toolchain
+make check                 # cargo check --workspace（默认 features）
+make smoke                 # 端到端冒烟（30 秒）
+make release-local-verify  # 编译 + 打包 + 解压验证一条龙
+make book-serve            # 本地预览 mdBook 文档站
 ```
 
-完整 Release 指南：[`docs/RELEASE.md`](docs/RELEASE.md)  
-📖 **完整文档站**（Day 22 mdBook）：https://LeoG1022.github.io/RAG4ArkUI/（首次推 master 触发自动部署 · 见 `.github/workflows/book.yml`）
-
-## 快速开始（开发者 · 从源码）
-
-```bash
-make install-rust            # 检查 / 提示安装 rust 工具链
-make check                   # cargo check --workspace（默认 features，不含 ONNX）
-make check-onnx              # 启用 onnx feature 后编译 embedding crate（首次较慢）
-make corpus-init             # 确保 corpus/ 子目录存在
-make smoke                   # 端到端冒烟（index + query 真实跑通）
-```
-
-更多入口见 [`Makefile`](Makefile) 与 [`crates/README.md`](crates/README.md)。
+更多 target 见 `make help` · [`Makefile`](Makefile) · [`crates/README.md`](crates/README.md)。
 
 ---
 
