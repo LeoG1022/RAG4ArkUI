@@ -1,0 +1,38 @@
+# RAG4ArkUI 文档站配置（Day 22）
+#
+# 用法：
+#   make book-serve     本地预览（http://localhost:3000）
+#   make book-build     生成静态站到 mdbook/book/
+#   推 master 自动部署到 gh-pages（见 .github/workflows/book.yml）
+
+[book]
+title = "RAG4ArkUI · 文档"
+description = "面向 OpenHarmony / ArkUI-X 的本地化 RAG 代码生成与迁移系统"
+authors = ["RAG4ArkUI Contributors"]
+language = "zh-CN"
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+default-theme = "rust"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/keerecles/RAG4ArkUI"
+edit-url-template = "https://github.com/keerecles/RAG4ArkUI/edit/master/mdbook/{path}"
+no-section-label = false
+fold = { enable = true, level = 1 }
+
+[output.html.search]
+enable = true
+limit-results = 30
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 2
+boost-paragraph = 1
+expand = true
+heading-split-level = 3
+
+# {{#include ../../docs/...}} 由 links preprocessor 内置支持
+# {{#playground}} 由 rust playground 提供（默认启用）

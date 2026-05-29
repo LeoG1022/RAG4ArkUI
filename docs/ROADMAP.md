@@ -1,22 +1,23 @@
 # RAG4ArkUI 路线图 · 全景与进度
 
 > **文档定位**：项目长期维护文档（类似 ADR / README），跨阶段全景视图。
-> **维护约定**：每个 Day 完成 commit 后，agent **同步更新本文档的进度标记**（不单独 commit）；新阶段补充进度行；不在本文档归档单次 round 的细节（那些去 STATUS-<slug>.md）。
+> **维护约定**：每个 Day 完成 commit 后，agent **同步更新本文档的进度标记**（不单独 commit）；新阶段补充进度行；不在本文档归档单次 round 的细节（那些去 STATUS-`<slug>`.md）。
 > **最后更新**：Day 16 完成（2026-05-28 · commit pending · LSP Server · 协议层 3/3 完整 ⭐）
 
 ---
 
 ## 📍 当前位置
 
-**Day 21 完成 · `arkui-rag corpus pull` 真活 · Week 6 进度 4/4 ⭐**
+**Day 22 完成 · mdBook 文档站 + 1.0 release notes 草稿 · 6 周 MVP 全部能力收尾 ⭐**
 
 - 9 个 Cargo crate · HTTP + MCP + LSP 三协议全部真活 ⭐
-- 本地 + CI 双路径分发：`make release-local`（本地 host）+ `.github/workflows/release.yml`（4 平台 matrix）
-- 默认 release features **6 项**（http, mcp, lsp, tantivy, typescript, **corpus-pull** 新加）
-- 用户首次接入：下 binary → **`corpus pull`** → index → query（完全自动 · 不用手动投放文档）
+- 本地 + CI 双路径分发：`make release-local`（host）+ `.github/workflows/release.yml`（4 平台 matrix）
+- 默认 release features **6 项**（http, mcp, lsp, tantivy, typescript, corpus-pull）
+- **mdBook 文档站**：`make book-build` 本地 · push master 触发 `.github/workflows/book.yml` 部署到 GitHub Pages
+- **`docs/RELEASE-NOTES-v1.0.0.md`** 草稿 · 用户改版本号 + push tag `v1.0.0` 即触发 1.0 release
 - Release binary 11 MB / tarball 4.1 MB
-- 17 个 STATUS 文档（规则 #17 生效后强制配套）
-- 24 个 git commit / 历史 16 个工作 Day
+- 18 个 STATUS 文档（规则 #17 生效后强制配套）
+- 25 个 git commit / 历史 17 个工作 Day
 
 ---
 
@@ -75,7 +76,7 @@ gantt
 
 ---
 
-## ✅ 已完成（24 commits）
+## ✅ 已完成（25 commits）
 
 | Commit | Day | Round | 内容 | STATUS |
 |---|---|---|---|---|
@@ -102,7 +103,8 @@ gantt
 | `197e894` | 20a | 20 | 本地 host release artifact（`scripts/release-local.sh` + Makefile + `docs/RELEASE.md` · 端到端 CLI 可下载即用 ⭐） | [STATUS-day20a](STATUS-day20a-release-local.md) |
 | `3ddb3a3` | 20b | 21 | CI matrix release（`.github/workflows/release.yml` · 4 平台 build · tag `v*` 触发 · GitHub Releases 自动上传 ⭐） | [STATUS-day20b](STATUS-day20b-ci-matrix.md) |
 | `f2797e1` | 20c | 22 | pre-existing 阻塞清理（Phase 1 typescript API 对齐 ✅ · Phase 2 chrono pin ✅ · typescript 进默认 features ⭐） | [STATUS-pre-existing-fixes](STATUS-pre-existing-fixes.md) |
-| _(本 commit)_ | **21 (当前)** | **23** | **`arkui-rag corpus pull` 真活**（ureq + tar.gz · feature gated · 默认 release 已含 · 用户无脑接入 ⭐） | [STATUS-corpus-pull](STATUS-corpus-pull.md) |
+| `5569cc7` | 21 | 23 | `arkui-rag corpus pull` 真活（ureq + tar.gz · feature gated · 默认 release 已含 · 用户无脑接入 ⭐） | [STATUS-corpus-pull](STATUS-corpus-pull.md) |
+| _(本 commit)_ | **22 (当前)** | **24** | **mdBook 文档站 + 1.0 release notes 草稿**（push master 触发 GitHub Pages 自动部署 · `RELEASE-NOTES-v1.0.0.md` 草稿 · MVP 完整收尾 ⭐） | [STATUS-mdbook-doc](STATUS-mdbook-doc.md) |
 
 ---
 
@@ -149,7 +151,7 @@ gantt
 | **20b** ✅ | **CI matrix 4 平台**（darwin arm64/x86_64 + linux + win） + GitHub Releases 自动上传（tag `v*` 触发） | 多平台分发自动化 | ✅ 1 commit（本轮） |
 | **21** ✅ | **`arkui-rag corpus pull --url|--from-file` 真活**（ureq 下载 + tar.gz 解压 + path traversal 安全检查） | 用户无脑接入 · 不用手动投放文档 | ✅ 1 commit（本轮） |
 | 21b | `corpus model-pull` 真活（BGE-M3 ONNX · 共用 cmd_corpus_pull 基础设施） | 模型自动下载 | 1 commit |
-| 22 | 文档站点 (mdBook) + release 1.0 | 公开发布 | 1-2 commit |
+| **22** ✅ | **mdBook 文档站 + 1.0 release notes 草稿**（push master 触发 GitHub Pages 自动部署 · 用户改版本号 + push tag v1.0.0 触发 1.0 release） | MVP 完整收尾 | ✅ 1 commit（本轮） |
 
 ### 🔮 长期演进 · 阶段 3-4（护城河）
 
@@ -185,7 +187,7 @@ gantt
 | Week 5: Claude Code 接入 | **1/1** ✅ | Day 19 |
 | Week 6: 自动安装 + corpus 分发 + 文档 + 评估报告 | **4/4** ✅ | 评估报告 ✓ · 本地 release ✓ · CI matrix ✓ · **corpus pull ✓（Day 21）** |
 
-**当前完成度估算：~85%**（Week 1-6 全部达成 · 协议层 3/3 ⭐ · 本地 + CI 全平台分发 ✓ · corpus 一键拉取 ✓ · 仅 IDE 插件 + 1.0 release page 待做）。
+**当前完成度估算：~90%**（Week 1-6 全部达成 · 协议层 3/3 ⭐ · 本地 + CI 全平台分发 ✓ · corpus 一键拉取 ✓ · mdBook 文档站 ✓ · 1.0 release notes 草稿 ✓ · 仅用户首推 v1.0.0 tag + IDE 插件 + ONNX 真活待做）。
 
 ---
 
@@ -277,10 +279,10 @@ Day 20-22 发布
 - **新切片 backlog 调整**：agent 在本文档"剩余切片"区更新优先级 / 工作量估算
 - **完成度 / 里程碑 / 业界基线**：每 5 round 评审一次
 
-### 与 STATUS-<slug>.md 的关系
+### 与 STATUS-`<slug>`.md 的关系
 
 - **ROADMAP**：跨阶段全景图，回答"还有多少工作 / 当前位置"
-- **STATUS-<slug>.md**：单轮快照（规则 #17 强制），回答"这一轮做了什么 / 现在是什么状态"
+- **STATUS-`<slug>`.md**：单轮快照（规则 #17 强制），回答"这一轮做了什么 / 现在是什么状态"
 - 二者**互补不重复**：ROADMAP 引用 STATUS 链接，STATUS 不重复 ROADMAP 内容
 
 ### 何时新增 ROADMAP

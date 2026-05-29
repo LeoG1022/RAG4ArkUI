@@ -1,0 +1,82 @@
+# RAG4ArkUI · mdBook deploy workflow (Day 22)
+#
+# 触发：
+#   - push 到 master 且改动了 mdbook/ 或 docs/ 下文件
+#   - 手动 workflow_dispatch
+#
+# 流程：
+#   1. 装 mdbook (~ubuntu-latest cargo install · 有缓存复用)
+#   2. mdbook build mdbook/
+#   3. 用 official actions/deploy-pages 推到 GitHub Pages
+#
+# 用户操作（一次性 · 仓库设置）：
+#   Settings → Pages → Source: "GitHub Actions"
+#   首次推 master 后等待 Actions 跑完 · 站点 URL: https://keerecles.github.io/RAG4ArkUI/
+
+name: Deploy mdBook
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "mdbook/**"
+      - "docs/**"
+      - ".github/workflows/book.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MDBOOK_VERSION: "0.5.3"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache mdbook binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/mdbook
+          key: mdbook-${{ env.MDBOOK_VERSION }}-ubuntu-latest
+
+      - name: Install mdbook
+        run: |
+          if ! command -v mdbook >/dev/null 2>&1; then
+            cargo install mdbook --version ${{ env.MDBOOK_VERSION }} --locked
+          fi
+          mdbook --version
+
+      - name: Build book
+        working-directory: mdbook
+        run: mdbook build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: mdbook/book
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

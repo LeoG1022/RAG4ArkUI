@@ -5,7 +5,7 @@
 CARGO ?= cargo
 CRATES_DIR := crates
 
-.PHONY: help install-rust check check-onnx check-tantivy check-treesitter check-lancedb check-http check-mcp check-lsp build build-onnx build-tantivy build-treesitter build-lancedb build-http build-mcp build-lsp build-full test fmt clippy clean corpus-init smoke serve-demo serve-mcp-demo serve-lsp-demo mcp-demo release-local release-local-verify
+.PHONY: help install-rust check check-onnx check-tantivy check-treesitter check-lancedb check-http check-mcp check-lsp build build-onnx build-tantivy build-treesitter build-lancedb build-http build-mcp build-lsp build-full test fmt clippy clean corpus-init smoke serve-demo serve-mcp-demo serve-lsp-demo mcp-demo release-local release-local-verify book-build book-serve book-clean install-mdbook
 
 help:
 	@echo "RAG4ArkUI — 可用 target"
@@ -39,6 +39,10 @@ help:
 	@echo "  make corpus-init    确保 corpus/ 5 个子目录存在并提示用户投放文档"
 	@echo "  make release-local         本地打 release tarball 到 dist/ (Day 20)"
 	@echo "  make release-local-verify  打包 + 解压 + 跑 --version 验证（Day 20）"
+	@echo "  make book-build            构建 mdBook 文档站到 mdbook/book/ (Day 22)"
+	@echo "  make book-serve            mdbook serve 本地预览（http://localhost:3000）"
+	@echo "  make book-clean            清 mdbook/book/"
+	@echo "  make install-mdbook        检查 / 提示安装 mdbook（brew / cargo）"
 
 install-rust:
 	@command -v cargo >/dev/null 2>&1 && echo "✅ 已安装：$$(cargo --version)" || { \
@@ -146,3 +150,25 @@ release-local-verify: release-local
 	@tar -xzf dist/arkui-rag-v0.0.1-$$(rustc -vV | awk '/^host:/ {print $$2}').tar.gz -C /tmp/arkui-rag-release-verify
 	@/tmp/arkui-rag-release-verify/arkui-rag-v0.0.1-$$(rustc -vV | awk '/^host:/ {print $$2}')/arkui-rag --version
 	@echo "✅ release tarball 端到端可用"
+
+# Day 22: mdBook 文档站
+install-mdbook:
+	@command -v mdbook >/dev/null 2>&1 && echo "✅ 已安装：$$(mdbook --version)" || { \
+	    echo "❌ 未检测到 mdbook。请执行："; \
+	    echo "    brew install mdbook"; \
+	    echo "  或："; \
+	    echo "    cargo install mdbook --locked"; \
+	    exit 1; \
+	}
+
+book-build: install-mdbook
+	cd mdbook && mdbook build
+	@echo ""
+	@echo "✅ 站点输出：mdbook/book/index.html"
+	@echo "   推 master 触发 .github/workflows/book.yml 自动部署到 gh-pages"
+
+book-serve: install-mdbook
+	cd mdbook && mdbook serve --open
+
+book-clean:
+	rm -rf mdbook/book

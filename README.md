@@ -52,7 +52,8 @@ cd arkui-rag-v0.0.1-aarch64-apple-darwin
 ./arkui-rag serve --lsp                                        # IDE LSP
 ```
 
-完整 Release 指南：[`docs/RELEASE.md`](docs/RELEASE.md)。
+完整 Release 指南：[`docs/RELEASE.md`](docs/RELEASE.md)  
+📖 **完整文档站**（Day 22 mdBook）：https://keerecles.github.io/RAG4ArkUI/（首次推 master 触发自动部署 · 见 `.github/workflows/book.yml`）
 
 ## 快速开始（开发者 · 从源码）
 

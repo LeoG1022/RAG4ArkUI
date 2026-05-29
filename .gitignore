@@ -51,3 +51,6 @@ Cargo.lock.bak
 *.tokenizer.json
 *.lance
 *.tantivy
+
+# mdBook 文档站构建产物（Day 22 · 由 GitHub Actions 推 gh-pages）
+/mdbook/book/
