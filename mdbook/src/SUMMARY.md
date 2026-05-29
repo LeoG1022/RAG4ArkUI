@@ -35,3 +35,7 @@
 - [STATUS 时间线](reference/status-timeline.md)
 - [Claude Code MCP 接入指南](reference/mcp-integration.md)
 - [术语对照表](reference/glossary.md)
+- [概念解释](reference/concepts/README.md)
+    - [mdBook](reference/concepts/mdbook.md)
+    - [tree-sitter](reference/concepts/tree-sitter.md)
+    - [MVP](reference/concepts/mvp.md)

@@ -17,6 +17,9 @@
 | **真启动** | 不只是 CLI 参数解析 · 进程真起来 + 端口/stdio 真监听 | （保留 · 已较清楚） | — |
 | **真上线** | 代码 + 文档 + release 包都对外可见 | **公开上线 / 发布上线** | "MVP 真上线" → "MVP 发布上线" |
 
+> 深度展开见 [`docs/concepts/`](concepts/README.md)（每个概念一篇）：
+> - [mdBook](concepts/mdbook.md) · [tree-sitter](concepts/tree-sitter.md) · [MVP](concepts/mvp.md)
+
 ## 项目惯用词
 
 | 词 | 含义 | 与业界关系 |
