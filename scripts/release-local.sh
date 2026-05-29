@@ -29,7 +29,7 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CRATES_DIR="$REPO_ROOT/crates"
 DIST_DIR="$REPO_ROOT/dist"
-DEFAULT_FEATURES="http,mcp,lsp,tantivy,typescript"
+DEFAULT_FEATURES="http,mcp,lsp,tantivy,typescript,corpus-pull"
 
 # 颜色
 if [ -t 1 ]; then

@@ -8,14 +8,15 @@
 
 ## 📍 当前位置
 
-**Day 20c 完成 · pre-existing 阻塞清理（Phase 1+2）· typescript feature 解锁 · 默认 release features 5 项**
+**Day 21 完成 · `arkui-rag corpus pull` 真活 · Week 6 进度 4/4 ⭐**
 
 - 9 个 Cargo crate · HTTP + MCP + LSP 三协议全部真活 ⭐
 - 本地 + CI 双路径分发：`make release-local`（本地 host）+ `.github/workflows/release.yml`（4 平台 matrix）
-- 默认 release features **5 项**（http, mcp, lsp, tantivy, **typescript** 新加）
-- pre-existing 阻塞清单：仅余 lancedb 主版本升级（task #81）
-- 16 个 STATUS 文档（规则 #17 生效后强制配套）
-- 23 个 git commit / 历史 15 个工作 Day
+- 默认 release features **6 项**（http, mcp, lsp, tantivy, typescript, **corpus-pull** 新加）
+- 用户首次接入：下 binary → **`corpus pull`** → index → query（完全自动 · 不用手动投放文档）
+- Release binary 11 MB / tarball 4.1 MB
+- 17 个 STATUS 文档（规则 #17 生效后强制配套）
+- 24 个 git commit / 历史 16 个工作 Day
 
 ---
 
@@ -74,7 +75,7 @@ gantt
 
 ---
 
-## ✅ 已完成（23 commits）
+## ✅ 已完成（24 commits）
 
 | Commit | Day | Round | 内容 | STATUS |
 |---|---|---|---|---|
@@ -100,7 +101,8 @@ gantt
 | `611cdcb` | 16 | 19 | LSP Server（手撸 Content-Length framing + 5 method + custom commands · 协议层 3/3 完整 ⭐） + 11 pre-existing 编译缺陷清理 | [STATUS-day16](STATUS-day16-lsp.md) |
 | `197e894` | 20a | 20 | 本地 host release artifact（`scripts/release-local.sh` + Makefile + `docs/RELEASE.md` · 端到端 CLI 可下载即用 ⭐） | [STATUS-day20a](STATUS-day20a-release-local.md) |
 | `3ddb3a3` | 20b | 21 | CI matrix release（`.github/workflows/release.yml` · 4 平台 build · tag `v*` 触发 · GitHub Releases 自动上传 ⭐） | [STATUS-day20b](STATUS-day20b-ci-matrix.md) |
-| _(本 commit)_ | **20c (当前)** | **22** | **pre-existing 阻塞清理**（Phase 1 typescript API 对齐 ✅ · Phase 2 chrono pin ✅ · typescript 进默认 features ⭐） | [STATUS-pre-existing-fixes](STATUS-pre-existing-fixes.md) |
+| `f2797e1` | 20c | 22 | pre-existing 阻塞清理（Phase 1 typescript API 对齐 ✅ · Phase 2 chrono pin ✅ · typescript 进默认 features ⭐） | [STATUS-pre-existing-fixes](STATUS-pre-existing-fixes.md) |
+| _(本 commit)_ | **21 (当前)** | **23** | **`arkui-rag corpus pull` 真活**（ureq + tar.gz · feature gated · 默认 release 已含 · 用户无脑接入 ⭐） | [STATUS-corpus-pull](STATUS-corpus-pull.md) |
 
 ---
 
@@ -145,7 +147,8 @@ gantt
 |---|---|---|---|
 | **20a** ✅ | **本地 host release artifact**（aarch64-apple-darwin · `scripts/release-local.sh` + Makefile） | 端到端 CLI 可下载即用 | ✅ 1 commit |
 | **20b** ✅ | **CI matrix 4 平台**（darwin arm64/x86_64 + linux + win） + GitHub Releases 自动上传（tag `v*` 触发） | 多平台分发自动化 | ✅ 1 commit（本轮） |
-| 21 | `corpus model-pull` 真实下载 + corpus 分发 | 用户无脑接入 | 2 commit |
+| **21** ✅ | **`arkui-rag corpus pull --url|--from-file` 真活**（ureq 下载 + tar.gz 解压 + path traversal 安全检查） | 用户无脑接入 · 不用手动投放文档 | ✅ 1 commit（本轮） |
+| 21b | `corpus model-pull` 真活（BGE-M3 ONNX · 共用 cmd_corpus_pull 基础设施） | 模型自动下载 | 1 commit |
 | 22 | 文档站点 (mdBook) + release 1.0 | 公开发布 | 1-2 commit |
 
 ### 🔮 长期演进 · 阶段 3-4（护城河）
@@ -180,9 +183,9 @@ gantt
 | Week 4: 协议层（HTTP + MCP + LSP） | **3/3** ✅ ⭐ | 全部达成（Day 14/15/16 三件套） |
 | Week 4: IDE 插件 (DevEco/IntelliJ) | **0/2** ⏳ | — |
 | Week 5: Claude Code 接入 | **1/1** ✅ | Day 19 |
-| Week 6: 自动安装 + corpus 分发 + 文档 + 评估报告 | **3/4** ✅ | 评估报告 ✓ · 本地 release ✓ · **CI matrix 自动 release ✓（Day 20b）** |
+| Week 6: 自动安装 + corpus 分发 + 文档 + 评估报告 | **4/4** ✅ | 评估报告 ✓ · 本地 release ✓ · CI matrix ✓ · **corpus pull ✓（Day 21）** |
 
-**当前完成度估算：~80%**（Week 1-5 全部达成 · 协议层 3/3 ⭐ · 本地 + CI 全平台分发 ✓ · 仅 corpus 分发 + IDE 插件 + 文档站待做）。
+**当前完成度估算：~85%**（Week 1-6 全部达成 · 协议层 3/3 ⭐ · 本地 + CI 全平台分发 ✓ · corpus 一键拉取 ✓ · 仅 IDE 插件 + 1.0 release page 待做）。
 
 ---
 

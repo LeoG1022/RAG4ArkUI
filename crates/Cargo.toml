@@ -72,6 +72,12 @@ chrono = "=0.4.39"
 axum = "0.8"
 tower = "0.5"
 
+# Day 21 corpus pull（cli crate 的 corpus-pull feature 用 · HTTP + tar.gz）
+# 选 ureq 不选 reqwest：体积小（无 tokio runtime 依赖）+ rustls TLS（无 OpenSSL 系统库依赖）+ 同步 API 在 spawn_blocking 中跑足够
+ureq = { version = "2.10", default-features = false, features = ["tls", "gzip"] }
+flate2 = "1.0"
+tar = "0.4"
+
 # 内部 crate（路径依赖）
 arkui-rag-core = { path = "arkui-rag-core" }
 arkui-rag-embedding = { path = "arkui-rag-embedding" }

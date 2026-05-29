@@ -234,7 +234,29 @@ enum CorpusOp {
         #[arg(long)]
         name: String,
     },
+    /// Day 21：拉取默认 corpus 包到指定目录（HTTP 下载 + tar.gz 解压）
+    Pull {
+        /// 远端 tarball URL（默认指向 GitHub Releases · 用户可覆盖到 gitcode mirror 或自建镜像）
+        #[arg(long, default_value = DEFAULT_CORPUS_URL)]
+        url: String,
+        /// 解压目标目录（默认 corpus/official）
+        #[arg(long, default_value = "corpus/official")]
+        target: PathBuf,
+        /// 强制覆盖已存在文件（默认拒绝避免误操作）
+        #[arg(long)]
+        force: bool,
+        /// 跳过 HTTP 下载，直接从本地文件解压（离线场景 / 测试用）
+        #[arg(long, value_name = "PATH")]
+        from_file: Option<PathBuf>,
+        /// 跳过路径中的前 N 段（兼容不同 tarball 顶层结构 · 默认 1 = 剥掉外层 wrap 目录）
+        #[arg(long, default_value_t = 1)]
+        strip_components: usize,
+    },
 }
+
+/// 默认 corpus tarball URL —— 用户可在 release 后替换为真实地址
+const DEFAULT_CORPUS_URL: &str =
+    "https://github.com/keerecles/RAG4ArkUI/releases/download/corpus-v0.0.1/arkui-rag-corpus-v0.0.1.tar.gz";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -1500,5 +1522,141 @@ async fn corpus_op(op: CorpusOp) -> anyhow::Result<()> {
             println!("      --task feature-extraction --opset 17 ~/.arkui-rag/models/bge-m3-onnx");
             Ok(())
         }
+        CorpusOp::Pull {
+            url,
+            target,
+            force,
+            from_file,
+            strip_components,
+        } => {
+            #[cfg(not(feature = "corpus-pull"))]
+            {
+                let _ = (url, target, force, from_file, strip_components);
+                anyhow::bail!(
+                    "corpus pull 需要 corpus-pull feature 启用：\n  cargo build --features corpus-pull -p arkui-rag-cli\n  或：cargo build --features full"
+                );
+            }
+            #[cfg(feature = "corpus-pull")]
+            {
+                cmd_corpus_pull(&url, &target, force, from_file.as_deref(), strip_components).await
+            }
+        }
     }
+}
+
+#[cfg(feature = "corpus-pull")]
+async fn cmd_corpus_pull(
+    url: &str,
+    target: &Path,
+    force: bool,
+    from_file: Option<&Path>,
+    strip_components: usize,
+) -> anyhow::Result<()> {
+    use anyhow::Context;
+    use flate2::read::GzDecoder;
+    use std::io::Read;
+    use tar::Archive;
+
+    // 1. 目标目录预检
+    if target.exists() {
+        let has_entries = std::fs::read_dir(target)
+            .map(|rd| rd.filter_map(|e| e.ok()).next().is_some())
+            .unwrap_or(false);
+        if has_entries && !force {
+            anyhow::bail!(
+                "目标目录非空：{}（加 --force 覆盖 · 或先 rm -rf 清空）",
+                target.display()
+            );
+        }
+    } else {
+        std::fs::create_dir_all(target)
+            .with_context(|| format!("创建目标目录失败：{}", target.display()))?;
+    }
+
+    // 2. 获取 tarball 字节（local-file 或 HTTP）
+    let target_owned = target.to_path_buf();
+    let from_file_owned = from_file.map(|p| p.to_path_buf());
+    let url_owned = url.to_string();
+
+    let tarball_bytes: Vec<u8> = tokio::task::spawn_blocking(move || -> anyhow::Result<Vec<u8>> {
+        if let Some(path) = &from_file_owned {
+            tracing::info!("从本地文件读取 tarball: {}", path.display());
+            std::fs::read(path).with_context(|| format!("读取本地 tarball 失败：{}", path.display()))
+        } else {
+            tracing::info!("HTTP GET: {}", url_owned);
+            let resp = ureq::get(&url_owned)
+                .timeout(std::time::Duration::from_secs(180))
+                .call()
+                .with_context(|| format!("HTTP GET 失败：{}", url_owned))?;
+            let mut buf = Vec::new();
+            resp.into_reader()
+                .take(500 * 1024 * 1024) // 上限 500 MB · 防恶意 tarball
+                .read_to_end(&mut buf)
+                .context("读 HTTP 响应体失败")?;
+            Ok(buf)
+        }
+    })
+    .await
+    .context("spawn_blocking 异常")??;
+
+    let bytes_mb = tarball_bytes.len() as f64 / 1024.0 / 1024.0;
+    tracing::info!("tarball 获取完成：{:.2} MB", bytes_mb);
+
+    // 3. 解压（spawn_blocking · tar/flate2 是同步 IO）
+    let entries_count = tokio::task::spawn_blocking(move || -> anyhow::Result<usize> {
+        let cursor = std::io::Cursor::new(tarball_bytes);
+        let gz = GzDecoder::new(cursor);
+        let mut archive = Archive::new(gz);
+        let mut count = 0usize;
+        for entry_result in archive.entries().context("读取 tar entries 失败")? {
+            let mut entry = entry_result.context("读取 entry 失败")?;
+            let path = entry.path().context("entry path 解析失败")?.into_owned();
+            // strip_components：剥掉前 N 段
+            let stripped: std::path::PathBuf = path.components().skip(strip_components).collect();
+            if stripped.as_os_str().is_empty() {
+                continue; // 顶层目录本身，跳过
+            }
+            let out_path = target_owned.join(&stripped);
+            // 安全检查：防 path traversal（确保解出来的路径仍在 target 内）
+            let target_canon = target_owned
+                .canonicalize()
+                .unwrap_or_else(|_| target_owned.clone());
+            if let Some(parent) = out_path.parent() {
+                std::fs::create_dir_all(parent).with_context(|| {
+                    format!("创建父目录失败：{}", parent.display())
+                })?;
+            }
+            // 重检 out_path 父目录的绝对路径在 target 内
+            if let Some(parent) = out_path.parent() {
+                if let Ok(parent_canon) = parent.canonicalize() {
+                    if !parent_canon.starts_with(&target_canon) {
+                        anyhow::bail!(
+                            "拒绝解压：路径越界 {} 不在 {} 内（疑似恶意 tarball）",
+                            out_path.display(),
+                            target_canon.display()
+                        );
+                    }
+                }
+            }
+            entry
+                .unpack(&out_path)
+                .with_context(|| format!("解压失败：{}", out_path.display()))?;
+            count += 1;
+        }
+        Ok(count)
+    })
+    .await
+    .context("spawn_blocking 异常")??;
+
+    println!("✅ corpus 拉取完成");
+    println!("   来源     : {}", from_file.map(|p| p.display().to_string()).unwrap_or_else(|| url.to_string()));
+    println!("   目标     : {}", target.display());
+    println!("   大小     : {:.2} MB", bytes_mb);
+    println!("   文件数    : {}", entries_count);
+    println!("   strip    : {} 段", strip_components);
+    println!();
+    println!("下一步：");
+    println!("   arkui-rag index --source {} --index-path {}/index.json --bm25 tantivy",
+        target.display(), target.display());
+    Ok(())
 }

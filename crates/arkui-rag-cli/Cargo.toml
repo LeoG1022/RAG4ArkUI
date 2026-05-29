@@ -26,6 +26,10 @@ clap = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+# Day 21 corpus pull：HTTP 下载 + tar.gz 解压（feature gated · 体积可控）
+ureq = { workspace = true, optional = true }
+flate2 = { workspace = true, optional = true }
+tar = { workspace = true, optional = true }
 
 [features]
 default = []
@@ -45,5 +49,7 @@ http = ["arkui-rag-server/http"]
 mcp = ["arkui-rag-server/mcp"]
 # Day 16：启用后 serve --lsp 真启动 LSP stdio (Content-Length framing)
 lsp = ["arkui-rag-server/lsp"]
-# 一键开全（向量 + BM25 + 全语言 + LanceDB + HTTP + MCP + LSP）
-full = ["onnx", "tantivy", "typescript", "kotlin", "swift", "lancedb", "http", "mcp", "lsp"]
+# Day 21：启用后 corpus pull 真活（HTTP 下载 + tar.gz 解压）
+corpus-pull = ["dep:ureq", "dep:flate2", "dep:tar"]
+# 一键开全（向量 + BM25 + 全语言 + LanceDB + HTTP + MCP + LSP + corpus-pull）
+full = ["onnx", "tantivy", "typescript", "kotlin", "swift", "lancedb", "http", "mcp", "lsp", "corpus-pull"]

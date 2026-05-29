@@ -38,8 +38,15 @@ make release-local-verify      # 编译 + 打包 + 解压验证一条龙
 tar -xzf dist/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
 cd arkui-rag-v0.0.1-aarch64-apple-darwin
 ./arkui-rag --version                                          # arkui-rag 0.0.1
-./arkui-rag index --source ./my-corpus --bm25 tantivy ...      # 建索引
-./arkui-rag query --text "..."                                 # 检索
+
+# Day 21：一键拉取默认 corpus（无需手动投放文档）
+./arkui-rag corpus pull --target ./corpus/official
+
+# 建索引 + 检索
+./arkui-rag index --source ./corpus/official --bm25 tantivy --index-path ./corpus/official/index.json
+./arkui-rag query --text "@State 双向绑定" --index-path ./corpus/official/index.json --bm25 tantivy -k 5
+
+# 三协议服务
 ./arkui-rag serve --mcp                                        # Claude Code 接入
 ./arkui-rag serve --http --addr 127.0.0.1:7654                 # HTTP REST
 ./arkui-rag serve --lsp                                        # IDE LSP

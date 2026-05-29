@@ -48,7 +48,7 @@ make release-local-verify
 
 ## Features 组合策略（Day 20）
 
-默认 features：**`http,mcp,lsp,tantivy,typescript`**（约 7 MB · Phase 1 已修复 typescript 阻塞）
+默认 features：**`http,mcp,lsp,tantivy,typescript,corpus-pull`**（约 8 MB）
 
 | feature | 是否默认 | 原因 |
 |---|---|---|
@@ -56,7 +56,8 @@ make release-local-verify
 | `mcp` | ✅ | MCP stdio 协议（Day 15） |
 | `lsp` | ✅ | LSP stdio 协议（Day 16） |
 | `tantivy` | ✅ | 真 BM25 倒排索引（Day 4） |
-| `typescript` | ✅ Day 20+ Phase 1 已修（tree-sitter-typescript 0.21 API 漂移已对齐）· 仍未默认启用因 ArkTS struct 需 custom grammar |
+| `typescript` | ✅ 已默认（Day 20c Phase 1 修了 0.21 API 漂移 · ArkTS struct 方法提取需 custom grammar 留 follow-up） |
+| `corpus-pull` | ✅ 已默认（Day 21 新增 · `arkui-rag corpus pull --url|--from-file` HTTP 下载 + tar.gz 解压）|
 | `lancedb` | ❌ | 3 层阻塞 · Phase 2 修了第 1 层（chrono 0.4.39 pin）· 第 2 层 protoc build-time 依赖 + 第 3 层 lance 0.17 async 类型递归超限 · 完全解锁需升 lancedb 主版本（0.10 → 0.20+，API 破坏性变更）|
 | `onnx` | ❌ | 体积 +~300MB + 需运行时 ONNX Runtime 原生库 · 单独 release 分发 |
 
