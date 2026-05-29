@@ -6,6 +6,7 @@
 # 上手
 
 - [快速开始](quickstart.md)
+- [端到端本地验证清单](verify.md)
 - [架构总览](architecture.md)
 - [完整路线图](roadmap.md)
 
