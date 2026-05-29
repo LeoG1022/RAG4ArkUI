@@ -153,7 +153,7 @@ gantt
 | **20a** ✅ | **本地 host release artifact**（aarch64-apple-darwin · `scripts/release-local.sh` + Makefile） | 端到端 CLI 可下载即用 | ✅ 1 commit |
 | **20b** ✅ | **CI matrix 4 平台**（darwin arm64/x86_64 + linux + win） + GitHub Releases 自动上传（tag `v*` 触发） | 多平台分发自动化 | ✅ 1 commit（本轮） |
 | **21** ✅ | **`arkui-rag corpus pull --url|--from-file` 真活**（ureq 下载 + tar.gz 解压 + path traversal 安全检查） | 用户无脑接入 · 不用手动投放文档 | ✅ 1 commit（本轮） |
-| **21b** ✅ | **`arkui-rag corpus model-pull --name bge-m3` 真活**（共用 download_and_extract helper · 默认 URL 路由 + ~/.arkui-rag/models/<name>/ 默认 target） | 模型自动下载 · 共用基础设施 | ✅ 1 commit（本轮） |
+| **21b** ✅ | **`arkui-rag corpus model-pull --name bge-m3` 真活**（共用 download_and_extract helper · 默认 URL 路由 + `~/.arkui-rag/models/<name>/` 默认 target） | 模型自动下载 · 共用基础设施 | ✅ 1 commit（本轮） |
 | **22** ✅ | **mdBook 文档站 + 1.0 release notes 草稿**（push master 触发 GitHub Pages 自动部署 · 用户改版本号 + push tag v1.0.0 触发 1.0 release） | MVP 完整收尾 | ✅ 1 commit（本轮） |
 
 ### 🔮 长期演进 · 阶段 3-4（护城河）

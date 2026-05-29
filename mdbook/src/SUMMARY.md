@@ -33,3 +33,4 @@
 - [完整技术方案](reference/full-plan.md)
 - [STATUS 时间线](reference/status-timeline.md)
 - [Claude Code MCP 接入指南](reference/mcp-integration.md)
+- [术语对照表](reference/glossary.md)
