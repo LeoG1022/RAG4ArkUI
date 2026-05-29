@@ -8,17 +8,17 @@
 
 ## 📍 当前位置
 
-**Day 21b 完成 · `arkui-rag corpus model-pull --name bge-m3` 真活 · 共用 corpus pull 基础设施**
+**task #81 完成 · lancedb 0.10 → 0.30 主版本升级 · `--vector lancedb` 端到端真活 ⭐**
 
 - 9 个 Cargo crate · HTTP + MCP + LSP 三协议全部真活 ⭐
 - 本地 + CI 双路径分发：`make release-local`（host）+ `.github/workflows/release.yml`（4 平台 matrix）
-- 默认 release features 6 项（http, mcp, lsp, tantivy, typescript, corpus-pull）
-- mdBook 文档站：`make book-build` 本地 · `.github/workflows/book.yml` 推 GitHub Pages
-- **`corpus model-pull`** 真活：默认 URL 路由（bge-m3 / bge-reranker-v2-m3）+ 默认 target `~/.arkui-rag/models/<name>/`
-- `docs/RELEASE-NOTES-v1.0.0.md` 草稿
-- Release binary 11 MB / tarball 4.1 MB
-- 19 个 STATUS 文档
-- 26 个 git commit / 历史 17 个工作 Day
+- 默认 release features 6 项（http, mcp, lsp, tantivy, typescript, corpus-pull · **lancedb 仍按需启用**）
+- **lancedb feature 完整真活**：`--features lancedb` binary 95 MB · 内部 lance KNN+FilteredRead
+- mdBook 文档站 + `docs/RELEASE-NOTES-v1.0.0.md` 草稿就位
+- `corpus pull` + `corpus model-pull` 一键拉默认 corpus + BGE-M3 模型
+- pre-existing 阻塞清单：**仅余 ort 链路**（task #87 · Day 20c blocker）
+- 20 个 STATUS 文档
+- 27 个 git commit / 历史 18 个工作 Day
 
 ---
 
@@ -77,7 +77,7 @@ gantt
 
 ---
 
-## ✅ 已完成（26 commits）
+## ✅ 已完成（27 commits）
 
 | Commit | Day | Round | 内容 | STATUS |
 |---|---|---|---|---|
@@ -106,7 +106,8 @@ gantt
 | `f2797e1` | 20c | 22 | pre-existing 阻塞清理（Phase 1 typescript API 对齐 ✅ · Phase 2 chrono pin ✅ · typescript 进默认 features ⭐） | [STATUS-pre-existing-fixes](STATUS-pre-existing-fixes.md) |
 | `5569cc7` | 21 | 23 | `arkui-rag corpus pull` 真活（ureq + tar.gz · feature gated · 默认 release 已含 · 用户无脑接入 ⭐） | [STATUS-corpus-pull](STATUS-corpus-pull.md) |
 | `98bf22d` | 22 | 24 | mdBook 文档站 + 1.0 release notes 草稿（push master 触发 GitHub Pages 自动部署 · `RELEASE-NOTES-v1.0.0.md` 草稿 · MVP 完整收尾 ⭐） | [STATUS-mdbook-doc](STATUS-mdbook-doc.md) |
-| _(本 commit)_ | **21b (当前)** | **25** | **`corpus model-pull` 真活**（重构抽 `download_and_extract` shared helper · 共用 corpus pull 基础设施 · `bge-m3` / `bge-reranker-v2-m3` 默认 URL 路由） | [STATUS-model-pull](STATUS-model-pull.md) |
+| `2dfbf61` | 21b | 25 | `corpus model-pull` 真活（重构抽 `download_and_extract` shared helper · `bge-m3` / `bge-reranker-v2-m3` 默认 URL 路由） | [STATUS-model-pull](STATUS-model-pull.md) |
+| _(本 commit)_ | **task #81 (当前)** | **26** | **lancedb 主版本升级**（0.10 → 0.30 · arrow 52 → 58 · chrono pin 移除 · LanceVectorStore dim auto-detect · `--vector lancedb` 端到端真活 ⭐） | [STATUS-lancedb-upgrade](STATUS-lancedb-upgrade.md) |
 
 ---
 

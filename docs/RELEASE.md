@@ -58,7 +58,7 @@ make release-local-verify
 | `tantivy` | ✅ | 真 BM25 倒排索引（Day 4） |
 | `typescript` | ✅ 已默认（Day 20c Phase 1 修了 0.21 API 漂移 · ArkTS struct 方法提取需 custom grammar 留 follow-up） |
 | `corpus-pull` | ✅ 已默认（Day 21 新增 · `arkui-rag corpus pull --url|--from-file` HTTP 下载 + tar.gz 解压）|
-| `lancedb` | ❌ | 3 层阻塞 · Phase 2 修了第 1 层（chrono 0.4.39 pin）· 第 2 层 protoc build-time 依赖 + 第 3 层 lance 0.17 async 类型递归超限 · 完全解锁需升 lancedb 主版本（0.10 → 0.20+，API 破坏性变更）|
+| `lancedb` | ✅ | task #81 完整解锁（lancedb 0.10 → 0.30 + arrow 52 → 58 + chrono pin 移除 + LanceVectorStore dim auto-detect from schema）· 用户需预装 `brew install protobuf`（build-time） |
 | `onnx` | ❌ | 体积 +~300MB + 需运行时 ONNX Runtime 原生库 · 单独 release 分发 |
 
 未来 Day 20 续：

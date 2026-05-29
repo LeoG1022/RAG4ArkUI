@@ -21,7 +21,8 @@ use arkui_rag_core::{
     Chunk, ChunkId, ChunkMetadata, Hit, HitSource, QueryFilters, RagError, Result,
 };
 use arrow_array::{
-    types::Float32Type, Array, FixedSizeListArray, RecordBatch, RecordBatchIterator, StringArray,
+    types::Float32Type, Array, FixedSizeListArray, RecordBatch, RecordBatchIterator,
+    RecordBatchReader, StringArray,
 };
 use arrow_schema::{DataType, Field, Schema, SchemaRef};
 use async_trait::async_trait;
@@ -49,6 +50,10 @@ impl LanceVectorStore {
     ///
     /// `uri` 是 LanceDB 连接串：本地用文件 URI 或绝对路径。
     /// 推荐路径约定：`<corpus>/_index/vectors.lance/`（CLI 自动推导）。
+    ///
+    /// 传 `dim=0` 表示 "load existing"：从已存在 table 的 Arrow schema 推导 dim；
+    /// 若 table 不存在则报错（不能从无中生有）。
+    /// 传 `dim > 0` 表示 "open or create"：若 table 不存在则用此 dim 建空表。
     pub async fn open(
         uri: &str,
         embedder_model_id: impl Into<String>,
@@ -59,19 +64,48 @@ impl LanceVectorStore {
             .await
             .map_err(|e| RagError::Storage(format!("lancedb connect {}: {}", uri, e)))?;
 
-        let schema = Arc::new(build_schema(dim));
         let model_id = embedder_model_id.into();
 
-        let table = match conn.open_table(TABLE_NAME).execute().await {
-            Ok(t) => t,
+        let (table, resolved_dim, schema) = match conn.open_table(TABLE_NAME).execute().await {
+            Ok(t) => {
+                // 从已有 schema 反推 dim
+                let table_schema = t
+                    .schema()
+                    .await
+                    .map_err(|e| RagError::Storage(format!("read table schema: {}", e)))?;
+                let resolved = read_vector_dim_from_schema(&table_schema).ok_or_else(|| {
+                    RagError::Storage(
+                        "已有 lance table 但找不到 vector 字段或 dim 推断失败".into(),
+                    )
+                })?;
+                // 若用户传了 dim 且与已有 schema 不一致 → 报错（防错配）
+                if dim != 0 && dim != resolved {
+                    return Err(RagError::Storage(format!(
+                        "lancedb open：传入 dim={} 与已有 schema dim={} 不一致",
+                        dim, resolved
+                    )));
+                }
+                let s: SchemaRef = table_schema;
+                (t, resolved, s)
+            }
             Err(_) => {
+                // 不存在 → 必须用 dim>0 建空表
+                if dim == 0 {
+                    return Err(RagError::Storage(format!(
+                        "lancedb open：table 不存在且未指定 dim · 用 dim>0 创建新 table"
+                    )));
+                }
+                let new_schema = Arc::new(build_schema(dim));
                 let empty_batches: Vec<std::result::Result<RecordBatch, arrow_schema::ArrowError>> =
                     Vec::new();
-                let iter = RecordBatchIterator::new(empty_batches.into_iter(), schema.clone());
-                conn.create_table(TABLE_NAME, Box::new(iter))
+                let iter = RecordBatchIterator::new(empty_batches.into_iter(), new_schema.clone());
+                let reader: Box<dyn RecordBatchReader + Send> = Box::new(iter);
+                let t = conn
+                    .create_table(TABLE_NAME, reader)
                     .execute()
                     .await
-                    .map_err(|e| RagError::Storage(format!("create_table: {}", e)))?
+                    .map_err(|e| RagError::Storage(format!("create_table: {}", e)))?;
+                (t, dim, new_schema)
             }
         };
 
@@ -79,7 +113,7 @@ impl LanceVectorStore {
             _conn: conn,
             table,
             embedder_model_id: model_id,
-            embedder_dim: dim,
+            embedder_dim: resolved_dim,
             schema,
         })
     }
@@ -193,6 +227,18 @@ fn build_schema(dim: usize) -> Schema {
     ])
 }
 
+/// 从 Arrow schema 的 `vector` FixedSizeList 字段反推 dim。
+/// 用于打开已存在的 lance table 时无需用户显式传 dim。
+fn read_vector_dim_from_schema(schema: &Schema) -> Option<usize> {
+    let field = schema.field_with_name("vector").ok()?;
+    if let DataType::FixedSizeList(_, size) = field.data_type() {
+        if *size > 0 {
+            return Some(*size as usize);
+        }
+    }
+    None
+}
+
 #[async_trait]
 impl VectorStore for LanceVectorStore {
     async fn upsert(&self, chunks: &[Chunk], embeddings: &[Vec<f32>]) -> Result<()> {
@@ -233,8 +279,9 @@ impl VectorStore for LanceVectorStore {
         let batch = self.build_batch(chunks, embeddings)?;
         let schema = self.schema.clone();
         let iter = RecordBatchIterator::new(std::iter::once(Ok(batch)), schema);
+        let reader: Box<dyn RecordBatchReader + Send> = Box::new(iter);
         self.table
-            .add(Box::new(iter))
+            .add(reader)
             .execute()
             .await
             .map_err(|e| RagError::Storage(format!("table.add: {}", e)))?;
@@ -414,6 +461,56 @@ mod tests {
         let hits = store.search(&q, 2, &QueryFilters::default()).await.unwrap();
         assert_eq!(hits.len(), 2);
         assert_eq!(hits[0].chunk.id.as_str(), "a", "Top-1 应是 'a'");
+    }
+
+    #[tokio::test]
+    async fn open_with_dim_zero_reads_from_schema() {
+        let dir = tempfile::tempdir().unwrap();
+        let uri = dir.path().to_str().unwrap();
+
+        // 1. 先用 dim=4 建表 + 写一条
+        let store = LanceVectorStore::open(uri, "mock-4", 4).await.unwrap();
+        store
+            .upsert(&[mk_chunk("a", "x")], &[norm(vec![1.0, 0.0, 0.0, 0.0])])
+            .await
+            .unwrap();
+        drop(store);
+
+        // 2. 重新 open · 传 dim=0 · 应自动从 schema 读出 dim=4
+        let reopened = LanceVectorStore::open(uri, "mock-4", 0).await.unwrap();
+        assert_eq!(reopened.dim(), 4, "dim 应该从 Arrow schema 自动推导");
+
+        // 3. 真跑 query 验证 dim 正确
+        let q = norm(vec![1.0, 0.0, 0.0, 0.0]);
+        let hits = reopened
+            .search(&q, 1, &QueryFilters::default())
+            .await
+            .unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].chunk.id.as_str(), "a");
+    }
+
+    #[tokio::test]
+    async fn open_with_dim_zero_no_table_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let r =
+            LanceVectorStore::open(dir.path().to_str().unwrap(), "mock-4", 0).await;
+        assert!(r.is_err(), "空目录 + dim=0 应报错（不能无中生有）");
+    }
+
+    #[tokio::test]
+    async fn open_dim_mismatch_with_existing_schema_fails() {
+        let dir = tempfile::tempdir().unwrap();
+        let uri = dir.path().to_str().unwrap();
+        LanceVectorStore::open(uri, "mock-4", 4)
+            .await
+            .unwrap()
+            .upsert(&[mk_chunk("a", "x")], &[norm(vec![1.0, 0.0, 0.0, 0.0])])
+            .await
+            .unwrap();
+        // 重 open 传 dim=8 与 schema 不一致 → 应报错
+        let r = LanceVectorStore::open(uri, "mock-4", 8).await;
+        assert!(r.is_err());
     }
 
     #[tokio::test]

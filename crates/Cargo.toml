@@ -60,13 +60,14 @@ tree-sitter = "0.22"
 tree-sitter-typescript = "0.21"
 
 # LanceDB 嵌入式向量库（storage crate 的 lancedb feature 用）
-lancedb = "0.10"
-arrow-array = "52"
-arrow-schema = "52"
+# task #81 (Day 22+)：升 lancedb 0.10 → 0.30 主版本 + arrow 52 → 58 · 解锁 lance 0.17 async 递归限制 +
+# 现代 chrono 0.4.40+ 兼容性 · 注意：arrow 58 API 与 52 不一致，LanceVectorStore 需要适配
+lancedb = "0.30"
+arrow-array = "58"
+arrow-schema = "58"
 futures = "0.3"
-# 钉 chrono 到 0.4.39（在 quarter() 引入之前 · 修 lancedb→arrow-arith 52.x ChronoDateExt::quarter() 撞 chrono 0.4.40+ Datelike::quarter() 的歧义）
-# follow-up：arrow-arith / lancedb 升级后可移除
-chrono = "=0.4.39"
+# chrono pin 试着移除 · 升级后 arrow-arith 应该已修 quarter() 歧义
+chrono = "0.4"
 
 # HTTP server（server crate 用）
 axum = "0.8"
