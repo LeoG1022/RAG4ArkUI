@@ -161,13 +161,13 @@ git push gitcode master --tags
 
 ```bash
 # 方案 A：保留两个独立 remote 名
-git remote add gitcode git@gitcode.com:keerecles/RAG4ArkUI.git
+git remote add gitcode git@gitcode.com:LeoG1022/RAG4ArkUI.git
 # 现在 push 需要分别：
 git push github master
 git push gitcode master
 
 # 方案 B：origin 单 push 到两个 URL（推荐 · 一次 push 同步两端）
-git remote set-url --add --push origin git@gitcode.com:keerecles/RAG4ArkUI.git
+git remote set-url --add --push origin git@gitcode.com:LeoG1022/RAG4ArkUI.git
 # 现在 git push origin 同步推到 github + gitcode
 ```
 

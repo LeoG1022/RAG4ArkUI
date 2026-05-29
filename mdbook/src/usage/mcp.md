@@ -54,4 +54,4 @@ arkui-rag serve --mcp \
 make mcp-demo   # 启 server + 喂 4 请求 + 断言响应
 ```
 
-详见 [STATUS-day15-mcp.md](https://github.com/keerecles/RAG4ArkUI/blob/master/docs/STATUS-day15-mcp.md) 和 [scripts/mcp-demo.sh](https://github.com/keerecles/RAG4ArkUI/blob/master/scripts/mcp-demo.sh)。
+详见 [STATUS-day15-mcp.md](https://github.com/LeoG1022/RAG4ArkUI/blob/master/docs/STATUS-day15-mcp.md) 和 [scripts/mcp-demo.sh](https://github.com/LeoG1022/RAG4ArkUI/blob/master/scripts/mcp-demo.sh)。

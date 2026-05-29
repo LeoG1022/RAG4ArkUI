@@ -61,7 +61,7 @@ const result = await client.sendRequest("arkui-rag/search", {
 // result.hits = [{ chunk_id, source, heading_path, line_range, score }, ...]
 ```
 
-详细技术细节见 [STATUS-day16-lsp.md](https://github.com/keerecles/RAG4ArkUI/blob/master/docs/STATUS-day16-lsp.md)。
+详细技术细节见 [STATUS-day16-lsp.md](https://github.com/LeoG1022/RAG4ArkUI/blob/master/docs/STATUS-day16-lsp.md)。
 
 ## 三协议互斥
 

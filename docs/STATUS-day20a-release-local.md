@@ -49,7 +49,7 @@ bash scripts/release-local.sh --skip-build                # 只重新打包
 
 ```bash
 # 1. 下载 tarball（GitHub Releases · Day 20b 自动化前需手动从 dist/ 拷贝）
-curl -LO https://github.com/keerecles/RAG4ArkUI/releases/download/v0.0.1/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
+curl -LO https://github.com/LeoG1022/RAG4ArkUI/releases/download/v0.0.1/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
 
 # 2. 解压
 tar -xzf arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz

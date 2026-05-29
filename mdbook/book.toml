@@ -19,8 +19,8 @@ create-missing = false
 [output.html]
 default-theme = "rust"
 preferred-dark-theme = "navy"
-git-repository-url = "https://github.com/keerecles/RAG4ArkUI"
-edit-url-template = "https://github.com/keerecles/RAG4ArkUI/edit/master/mdbook/{path}"
+git-repository-url = "https://github.com/LeoG1022/RAG4ArkUI"
+edit-url-template = "https://github.com/LeoG1022/RAG4ArkUI/edit/master/mdbook/{path}"
 no-section-label = false
 fold = { enable = true, level = 1 }
 

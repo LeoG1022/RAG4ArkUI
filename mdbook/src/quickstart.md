@@ -6,7 +6,7 @@
 
 ```bash
 # 从 GitHub Releases 下（macOS Apple Silicon 示例）
-curl -LO https://github.com/keerecles/RAG4ArkUI/releases/download/v0.0.1/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
+curl -LO https://github.com/LeoG1022/RAG4ArkUI/releases/download/v0.0.1/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
 tar -xzf arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
 cd arkui-rag-v0.0.1-aarch64-apple-darwin
 ./arkui-rag --version    # arkui-rag 0.0.1
@@ -79,7 +79,7 @@ cd arkui-rag-v0.0.1-aarch64-apple-darwin
 ## 开发者：从源码
 
 ```bash
-git clone https://github.com/keerecles/RAG4ArkUI
+git clone https://github.com/LeoG1022/RAG4ArkUI
 cd RAG4ArkUI
 make install-rust       # 检查 / 提示安装 rust 工具链
 make check              # cargo check --workspace

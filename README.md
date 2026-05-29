@@ -25,7 +25,7 @@
 
 ```bash
 # 方式 A：从 GitHub Releases 下（推荐 · CI matrix 已就绪 · 4 平台自动构建）
-curl -LO https://github.com/keerecles/RAG4ArkUI/releases/download/v0.0.1/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
+curl -LO https://github.com/LeoG1022/RAG4ArkUI/releases/download/v0.0.1/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
 
 # 方式 B：本地构建（开发者 · 当前 host 平台）
 make release-local-verify      # 编译 + 打包 + 解压验证一条龙
@@ -53,7 +53,7 @@ cd arkui-rag-v0.0.1-aarch64-apple-darwin
 ```
 
 完整 Release 指南：[`docs/RELEASE.md`](docs/RELEASE.md)  
-📖 **完整文档站**（Day 22 mdBook）：https://keerecles.github.io/RAG4ArkUI/（首次推 master 触发自动部署 · 见 `.github/workflows/book.yml`）
+📖 **完整文档站**（Day 22 mdBook）：https://LeoG1022.github.io/RAG4ArkUI/（首次推 master 触发自动部署 · 见 `.github/workflows/book.yml`）
 
 ## 快速开始（开发者 · 从源码）
 

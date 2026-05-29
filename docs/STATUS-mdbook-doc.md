@@ -21,7 +21,7 @@
 | `.gitignore` | + `/mdbook/book/`（构建产物排除） |
 | `docs/RELEASE-NOTES-v1.0.0.md` | **新增** · 1.0 release notes 草稿 |
 | `docs/ROADMAP.md` | `<slug>` 反引号转义（mdBook HTML parser 兼容） · 第 13 次实战 |
-| `README.md` | 顶部加文档站 URL `https://keerecles.github.io/RAG4ArkUI/` |
+| `README.md` | 顶部加文档站 URL `https://LeoG1022.github.io/RAG4ArkUI/` |
 
 ### 站点输出
 
@@ -82,7 +82,7 @@ make book-clean           # rm -rf mdbook/book
 1. Settings → Pages → Source: **GitHub Actions**
 2. 推 master（任何改动 mdbook/ 或 docs/ 的 commit 都会触发）
 3. 等 5-10 分钟看 `.github/workflows/book.yml` 跑完
-4. 访问 https://keerecles.github.io/RAG4ArkUI/
+4. 访问 https://LeoG1022.github.io/RAG4ArkUI/
 
 ### 1.0 release（用户决策）
 
@@ -122,7 +122,7 @@ deploy job
 ### 站点访问
 
 ```
-https://keerecles.github.io/RAG4ArkUI/
+https://LeoG1022.github.io/RAG4ArkUI/
 ├── intro.html          首页
 ├── status.html         当前状态
 ├── quickstart.html     5 分钟跑通本地 CLI
@@ -159,7 +159,7 @@ make book-serve               # 开浏览器 http://localhost:3000
 
 # 3. push master 触发部署
 git push origin master        # CI 5-10 分钟跑完
-# 访问 https://keerecles.github.io/RAG4ArkUI/
+# 访问 https://LeoG1022.github.io/RAG4ArkUI/
 ```
 
 ### 自动化

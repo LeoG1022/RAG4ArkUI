@@ -21,7 +21,7 @@ version = "0.0.1"
 edition = "2021"
 license = "MIT"
 authors = ["RAG4ArkUI Contributors"]
-repository = "https://github.com/keerecles/RAG4ArkUI"
+repository = "https://github.com/LeoG1022/RAG4ArkUI"
 rust-version = "1.75"
 
 # 全 workspace 共享依赖版本（避免重复定义、保证 crate 间一致）

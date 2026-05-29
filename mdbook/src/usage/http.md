@@ -99,4 +99,4 @@ curl http://127.0.0.1:7654/corpus/list
 - API key 鉴权（middleware）
 - CORS（如果浏览器直接调用）
 
-详见 [docs/STATUS-day14-http.md](https://github.com/keerecles/RAG4ArkUI/blob/master/docs/STATUS-day14-http.md)。
+详见 [docs/STATUS-day14-http.md](https://github.com/LeoG1022/RAG4ArkUI/blob/master/docs/STATUS-day14-http.md)。

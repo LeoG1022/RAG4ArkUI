@@ -57,8 +57,8 @@ arkui-rag corpus model-pull --name bge-m3 --strip-components 0
 
 | `--name` | 默认 URL |
 |---|---|
-| `bge-m3` | `https://github.com/keerecles/RAG4ArkUI/releases/download/models-v1/bge-m3-onnx-v1.tar.gz` |
-| `bge-reranker-v2-m3` | `https://github.com/keerecles/RAG4ArkUI/releases/download/models-v1/bge-reranker-v2-m3-onnx-v1.tar.gz` |
+| `bge-m3` | `https://github.com/LeoG1022/RAG4ArkUI/releases/download/models-v1/bge-m3-onnx-v1.tar.gz` |
+| `bge-reranker-v2-m3` | `https://github.com/LeoG1022/RAG4ArkUI/releases/download/models-v1/bge-reranker-v2-m3-onnx-v1.tar.gz` |
 | 其它 | bail · 用 `--url` 自定义 |
 
 加新模型只改 `default_model_url()` 一处。

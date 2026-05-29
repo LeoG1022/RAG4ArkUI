@@ -66,7 +66,7 @@ arkui-rag-corpus-vX.Y.Z.tar.gz
 - 500 MB 下载上限：防恶意 HTTP 响应吃光内存
 - 180s HTTP 超时
 
-详细技术细节见 [STATUS-corpus-pull.md](https://github.com/keerecles/RAG4ArkUI/blob/master/docs/STATUS-corpus-pull.md)。
+详细技术细节见 [STATUS-corpus-pull.md](https://github.com/LeoG1022/RAG4ArkUI/blob/master/docs/STATUS-corpus-pull.md)。
 
 ## 拉取模型（Day 21b）
 
@@ -100,8 +100,8 @@ arkui-rag query --text "..." --embedder onnx --model-path ~/.arkui-rag/models/bg
 
 | `--name` | 默认 URL |
 |---|---|
-| `bge-m3` | `https://github.com/keerecles/RAG4ArkUI/releases/download/models-v1/bge-m3-onnx-v1.tar.gz` |
-| `bge-reranker-v2-m3` | `https://github.com/keerecles/RAG4ArkUI/releases/download/models-v1/bge-reranker-v2-m3-onnx-v1.tar.gz` |
+| `bge-m3` | `https://github.com/LeoG1022/RAG4ArkUI/releases/download/models-v1/bge-m3-onnx-v1.tar.gz` |
+| `bge-reranker-v2-m3` | `https://github.com/LeoG1022/RAG4ArkUI/releases/download/models-v1/bge-reranker-v2-m3-onnx-v1.tar.gz` |
 | 其它 | 报错 · 用 `--url` 自定义 |
 
 ⚠️ 默认 URL 当前为占位 · 用户首次准备 ONNX 模型 tarball + push GitHub Release `models-v1` 后真活。

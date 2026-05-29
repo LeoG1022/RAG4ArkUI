@@ -61,13 +61,13 @@ git push gitcode master --tags
 
 ```bash
 # 方案 A：保留两个独立 remote 名
-git remote add gitcode git@gitcode.com:keerecles/RAG4ArkUI.git
+git remote add gitcode git@gitcode.com:LeoG1022/RAG4ArkUI.git
 # push 时分别：
 git push github master
 git push gitcode master
 
 # 方案 B：origin 单 push 到两个 URL（推荐）
-git remote set-url --add --push origin git@gitcode.com:keerecles/RAG4ArkUI.git
+git remote set-url --add --push origin git@gitcode.com:LeoG1022/RAG4ArkUI.git
 # git push origin 同步推到 github + gitcode
 ```
 
@@ -123,12 +123,12 @@ Released 2026-05-30 · 4 assets
 ### 用户下载流程
 
 ```bash
-# 1. 看 https://github.com/keerecles/RAG4ArkUI/releases
+# 1. 看 https://github.com/LeoG1022/RAG4ArkUI/releases
 # 2. 复制目标平台的 tarball URL
-curl -LO https://github.com/keerecles/RAG4ArkUI/releases/download/v0.0.2/arkui-rag-v0.0.2-aarch64-apple-darwin.tar.gz
+curl -LO https://github.com/LeoG1022/RAG4ArkUI/releases/download/v0.0.2/arkui-rag-v0.0.2-aarch64-apple-darwin.tar.gz
 
 # 3. （可选）校验 sha256
-curl -LO https://github.com/keerecles/RAG4ArkUI/releases/download/v0.0.2/SHA256SUMS
+curl -LO https://github.com/LeoG1022/RAG4ArkUI/releases/download/v0.0.2/SHA256SUMS
 shasum -c SHA256SUMS
 
 # 4. 解压 + 跑

@@ -25,7 +25,7 @@
 ### 用户阅读
 
 - 直接在 GitHub：`docs/GLOSSARY.md`
-- 文档站（部署后）：`https://keerecles.github.io/RAG4ArkUI/reference/glossary.html`
+- 文档站（部署后）：`https://LeoG1022.github.io/RAG4ArkUI/reference/glossary.html`
 
 ### Agent 自我约束（自此 commit 起）
 

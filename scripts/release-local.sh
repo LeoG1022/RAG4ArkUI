@@ -184,7 +184,7 @@ Features: ${FEATURES}
   - tree-sitter 代码切分（pre-existing tree-sitter-typescript 0.21 API 漂移，已挂 follow-up）
 
 【完整文档】
-  https://github.com/keerecles/RAG4ArkUI
+  https://github.com/LeoG1022/RAG4ArkUI
 INSTALL_EOF
 
 ls -lh "$STAGING/"

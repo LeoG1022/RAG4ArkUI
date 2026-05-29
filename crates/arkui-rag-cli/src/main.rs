@@ -272,7 +272,7 @@ enum CorpusOp {
 
 /// 默认 corpus tarball URL —— 用户可在 release 后替换为真实地址
 const DEFAULT_CORPUS_URL: &str =
-    "https://github.com/keerecles/RAG4ArkUI/releases/download/corpus-v0.0.1/arkui-rag-corpus-v0.0.1.tar.gz";
+    "https://github.com/LeoG1022/RAG4ArkUI/releases/download/corpus-v0.0.1/arkui-rag-corpus-v0.0.1.tar.gz";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -1659,10 +1659,10 @@ async fn cmd_corpus_model_pull(
 fn default_model_url(name: &str) -> anyhow::Result<&'static str> {
     match name {
         "bge-m3" => Ok(
-            "https://github.com/keerecles/RAG4ArkUI/releases/download/models-v1/bge-m3-onnx-v1.tar.gz",
+            "https://github.com/LeoG1022/RAG4ArkUI/releases/download/models-v1/bge-m3-onnx-v1.tar.gz",
         ),
         "bge-reranker-v2-m3" => Ok(
-            "https://github.com/keerecles/RAG4ArkUI/releases/download/models-v1/bge-reranker-v2-m3-onnx-v1.tar.gz",
+            "https://github.com/LeoG1022/RAG4ArkUI/releases/download/models-v1/bge-reranker-v2-m3-onnx-v1.tar.gz",
         ),
         other => anyhow::bail!(
             "未知模型名: {} · 已知: bge-m3 / bge-reranker-v2-m3 · 或加 --url 自定义",
