@@ -229,10 +229,26 @@ enum Cmd {
 enum CorpusOp {
     /// 列出 corpus/ 下的子目录与文档数
     List,
-    /// 拉取 / 更新本地模型 —— Week 2-3 backlog（真实下载）
+    /// Day 21b：拉取 / 更新本地模型到 ~/.arkui-rag/models/<name>/（HTTP 下载 + tar.gz 解压）
     ModelPull {
-        #[arg(long)]
+        /// 模型名（默认 bge-m3 · 也支持 bge-reranker-v2-m3）· 触发默认 URL 路由
+        #[arg(long, default_value = "bge-m3")]
         name: String,
+        /// 自定义 URL · 默认按 name 路由到 GitHub Release（gitcode mirror / HuggingFace 直链可覆盖）
+        #[arg(long)]
+        url: Option<String>,
+        /// 目标目录 · 默认 ~/.arkui-rag/models/<name>/
+        #[arg(long)]
+        target: Option<PathBuf>,
+        /// 强制覆盖已存在文件
+        #[arg(long)]
+        force: bool,
+        /// 跳过 HTTP 下载 · 从本地 tarball 解压
+        #[arg(long, value_name = "PATH")]
+        from_file: Option<PathBuf>,
+        /// 剥掉路径前 N 段 · 默认 1（剥外层 wrap 目录）
+        #[arg(long, default_value_t = 1)]
+        strip_components: usize,
     },
     /// Day 21：拉取默认 corpus 包到指定目录（HTTP 下载 + tar.gz 解压）
     Pull {
@@ -1505,22 +1521,33 @@ async fn corpus_op(op: CorpusOp) -> anyhow::Result<()> {
             }
             Ok(())
         }
-        CorpusOp::ModelPull { name } => {
-            println!("arkui-rag corpus model-pull --name {} (stub)", name);
-            println!("⏳ Week 2-3 backlog：从 HuggingFace / ModelScope 拉模型到 ~/.arkui-rag/models/");
-            println!();
-            println!("当前手动获取方式：");
-            println!("  # BGE-M3");
-            println!("  git lfs install");
-            println!("  git clone https://huggingface.co/BAAI/bge-m3 ~/.arkui-rag/models/bge-m3");
-            println!("  # 或国内镜像：");
-            println!("  git clone https://www.modelscope.cn/Xorbits/bge-m3.git ~/.arkui-rag/models/bge-m3");
-            println!();
-            println!("  之后导出 ONNX（一次性）：");
-            println!("  pip install optimum[onnxruntime]");
-            println!("  optimum-cli export onnx --model ~/.arkui-rag/models/bge-m3 \\");
-            println!("      --task feature-extraction --opset 17 ~/.arkui-rag/models/bge-m3-onnx");
-            Ok(())
+        CorpusOp::ModelPull {
+            name,
+            url,
+            target,
+            force,
+            from_file,
+            strip_components,
+        } => {
+            #[cfg(not(feature = "corpus-pull"))]
+            {
+                let _ = (name, url, target, force, from_file, strip_components);
+                anyhow::bail!(
+                    "corpus model-pull 需要 corpus-pull feature 启用：\n  cargo build --features corpus-pull -p arkui-rag-cli\n  或：cargo build --features full"
+                );
+            }
+            #[cfg(feature = "corpus-pull")]
+            {
+                cmd_corpus_model_pull(
+                    &name,
+                    url.as_deref(),
+                    target.as_deref(),
+                    force,
+                    from_file.as_deref(),
+                    strip_components,
+                )
+                .await
+            }
         }
         CorpusOp::Pull {
             url,
@@ -1552,6 +1579,124 @@ async fn cmd_corpus_pull(
     from_file: Option<&Path>,
     strip_components: usize,
 ) -> anyhow::Result<()> {
+    let stats = download_and_extract(url, from_file, target, force, strip_components).await?;
+    println!("✅ corpus 拉取完成");
+    println!("   来源     : {}", from_file.map(|p| p.display().to_string()).unwrap_or_else(|| url.to_string()));
+    println!("   目标     : {}", target.display());
+    println!("   大小     : {:.2} MB", stats.bytes_mb);
+    println!("   文件数    : {}", stats.entries_count);
+    println!("   strip    : {} 段", strip_components);
+    println!();
+    println!("下一步：");
+    println!("   arkui-rag index --source {} --index-path {}/index.json --bm25 tantivy",
+        target.display(), target.display());
+    Ok(())
+}
+
+/// Day 21b：拉取模型到 ~/.arkui-rag/models/<name>/
+#[cfg(feature = "corpus-pull")]
+async fn cmd_corpus_model_pull(
+    name: &str,
+    url: Option<&str>,
+    target: Option<&Path>,
+    force: bool,
+    from_file: Option<&Path>,
+    strip_components: usize,
+) -> anyhow::Result<()> {
+    use anyhow::Context;
+
+    // 1. 解析 URL：用户传 --url 优先 · 否则按 name 路由
+    let resolved_url: String = match url {
+        Some(u) => u.to_string(),
+        None if from_file.is_some() => String::new(), // 从本地文件读 · URL 不用
+        None => default_model_url(name)?.to_string(),
+    };
+
+    // 2. 解析 target：用户传 --target 优先 · 否则 ~/.arkui-rag/models/<name>/
+    let resolved_target: PathBuf = match target {
+        Some(t) => t.to_path_buf(),
+        None => default_model_target(name)?,
+    };
+
+    tracing::info!(
+        "model-pull: name={} target={} url={}",
+        name,
+        resolved_target.display(),
+        if from_file.is_some() {
+            from_file.unwrap().display().to_string()
+        } else {
+            resolved_url.clone()
+        }
+    );
+
+    // 3. 下 + 解压（复用 cmd_corpus_pull 同一基础设施）
+    let stats = download_and_extract(
+        &resolved_url,
+        from_file,
+        &resolved_target,
+        force,
+        strip_components,
+    )
+    .await
+    .with_context(|| format!("model-pull 失败: name={}", name))?;
+
+    println!("✅ 模型拉取完成");
+    println!("   model    : {}", name);
+    println!("   来源     : {}", from_file.map(|p| p.display().to_string()).unwrap_or(resolved_url));
+    println!("   目标     : {}", resolved_target.display());
+    println!("   大小     : {:.2} MB", stats.bytes_mb);
+    println!("   文件数    : {}", stats.entries_count);
+    println!("   strip    : {} 段", strip_components);
+    println!();
+    println!("下一步（用真模型跑 index/query · 需要 onnx feature）：");
+    println!("   arkui-rag index ... --embedder onnx --model-path {}", resolved_target.display());
+    println!("   arkui-rag query ... --embedder onnx --model-path {}", resolved_target.display());
+    Ok(())
+}
+
+/// 已知模型名 → 默认 URL 路由（用户用 --url 可覆盖）
+#[cfg(feature = "corpus-pull")]
+fn default_model_url(name: &str) -> anyhow::Result<&'static str> {
+    match name {
+        "bge-m3" => Ok(
+            "https://github.com/keerecles/RAG4ArkUI/releases/download/models-v1/bge-m3-onnx-v1.tar.gz",
+        ),
+        "bge-reranker-v2-m3" => Ok(
+            "https://github.com/keerecles/RAG4ArkUI/releases/download/models-v1/bge-reranker-v2-m3-onnx-v1.tar.gz",
+        ),
+        other => anyhow::bail!(
+            "未知模型名: {} · 已知: bge-m3 / bge-reranker-v2-m3 · 或加 --url 自定义",
+            other
+        ),
+    }
+}
+
+/// 默认模型目录：~/.arkui-rag/models/<name>/
+#[cfg(feature = "corpus-pull")]
+fn default_model_target(name: &str) -> anyhow::Result<PathBuf> {
+    use anyhow::Context;
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .context("HOME / USERPROFILE 环境变量都未设置 · 用 --target 显式指定目录")?;
+    Ok(PathBuf::from(home).join(".arkui-rag").join("models").join(name))
+}
+
+/// 共享：HTTP 下载（或读本地文件）+ tar.gz 解压 + path traversal 安全检查
+/// 被 cmd_corpus_pull 和 cmd_corpus_model_pull 共用
+#[cfg(feature = "corpus-pull")]
+struct ExtractStats {
+    bytes_mb: f64,
+    entries_count: usize,
+}
+
+#[cfg(feature = "corpus-pull")]
+async fn download_and_extract(
+    url: &str,
+    from_file: Option<&Path>,
+    target: &Path,
+    force: bool,
+    strip_components: usize,
+) -> anyhow::Result<ExtractStats> {
     use anyhow::Context;
     use flate2::read::GzDecoder;
     use std::io::Read;
@@ -1581,16 +1726,17 @@ async fn cmd_corpus_pull(
     let tarball_bytes: Vec<u8> = tokio::task::spawn_blocking(move || -> anyhow::Result<Vec<u8>> {
         if let Some(path) = &from_file_owned {
             tracing::info!("从本地文件读取 tarball: {}", path.display());
-            std::fs::read(path).with_context(|| format!("读取本地 tarball 失败：{}", path.display()))
+            std::fs::read(path)
+                .with_context(|| format!("读取本地 tarball 失败：{}", path.display()))
         } else {
             tracing::info!("HTTP GET: {}", url_owned);
             let resp = ureq::get(&url_owned)
-                .timeout(std::time::Duration::from_secs(180))
+                .timeout(std::time::Duration::from_secs(300)) // 模型可能较大 · 给 5 分钟
                 .call()
                 .with_context(|| format!("HTTP GET 失败：{}", url_owned))?;
             let mut buf = Vec::new();
             resp.into_reader()
-                .take(500 * 1024 * 1024) // 上限 500 MB · 防恶意 tarball
+                .take(2 * 1024 * 1024 * 1024) // 上限 2 GB · 模型可能很大（BGE-M3 ONNX ~600 MB）
                 .read_to_end(&mut buf)
                 .context("读 HTTP 响应体失败")?;
             Ok(buf)
@@ -1611,22 +1757,18 @@ async fn cmd_corpus_pull(
         for entry_result in archive.entries().context("读取 tar entries 失败")? {
             let mut entry = entry_result.context("读取 entry 失败")?;
             let path = entry.path().context("entry path 解析失败")?.into_owned();
-            // strip_components：剥掉前 N 段
             let stripped: std::path::PathBuf = path.components().skip(strip_components).collect();
             if stripped.as_os_str().is_empty() {
-                continue; // 顶层目录本身，跳过
+                continue;
             }
             let out_path = target_owned.join(&stripped);
-            // 安全检查：防 path traversal（确保解出来的路径仍在 target 内）
             let target_canon = target_owned
                 .canonicalize()
                 .unwrap_or_else(|_| target_owned.clone());
             if let Some(parent) = out_path.parent() {
-                std::fs::create_dir_all(parent).with_context(|| {
-                    format!("创建父目录失败：{}", parent.display())
-                })?;
+                std::fs::create_dir_all(parent)
+                    .with_context(|| format!("创建父目录失败：{}", parent.display()))?;
             }
-            // 重检 out_path 父目录的绝对路径在 target 内
             if let Some(parent) = out_path.parent() {
                 if let Ok(parent_canon) = parent.canonicalize() {
                     if !parent_canon.starts_with(&target_canon) {
@@ -1648,15 +1790,5 @@ async fn cmd_corpus_pull(
     .await
     .context("spawn_blocking 异常")??;
 
-    println!("✅ corpus 拉取完成");
-    println!("   来源     : {}", from_file.map(|p| p.display().to_string()).unwrap_or_else(|| url.to_string()));
-    println!("   目标     : {}", target.display());
-    println!("   大小     : {:.2} MB", bytes_mb);
-    println!("   文件数    : {}", entries_count);
-    println!("   strip    : {} 段", strip_components);
-    println!();
-    println!("下一步：");
-    println!("   arkui-rag index --source {} --index-path {}/index.json --bm25 tantivy",
-        target.display(), target.display());
-    Ok(())
+    Ok(ExtractStats { bytes_mb, entries_count })
 }

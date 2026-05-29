@@ -68,6 +68,55 @@ arkui-rag-corpus-vX.Y.Z.tar.gz
 
 详细技术细节见 [STATUS-corpus-pull.md](https://github.com/keerecles/RAG4ArkUI/blob/master/docs/STATUS-corpus-pull.md)。
 
+## 拉取模型（Day 21b）
+
+`corpus model-pull` 共用 corpus pull 的 HTTP + tar.gz 基础设施，把 ONNX 模型拉到 `~/.arkui-rag/models/<name>/`：
+
+```bash
+# 一键拉默认 BGE-M3（按 name 路由到 GitHub Releases 的 models-v1 tarball）
+arkui-rag corpus model-pull --name bge-m3
+
+# 拉 reranker
+arkui-rag corpus model-pull --name bge-reranker-v2-m3
+
+# 自定义 URL（gitcode mirror / HuggingFace 直链 / 自建镜像）
+arkui-rag corpus model-pull \
+    --name custom \
+    --url https://example.com/my-model.tar.gz \
+    --target ~/.arkui-rag/models/custom
+
+# 离线场景：从本地 tarball 解压
+arkui-rag corpus model-pull --name bge-m3 --from-file ./bge-m3-onnx-v1.tar.gz
+```
+
+拉完后用真模型跑 index/query（需 `onnx` feature 编译）：
+
+```bash
+arkui-rag index --source ./corpus/official --embedder onnx --model-path ~/.arkui-rag/models/bge-m3 ...
+arkui-rag query --text "..." --embedder onnx --model-path ~/.arkui-rag/models/bge-m3 ...
+```
+
+### 已知模型名 → 默认 URL 路由
+
+| `--name` | 默认 URL |
+|---|---|
+| `bge-m3` | `https://github.com/keerecles/RAG4ArkUI/releases/download/models-v1/bge-m3-onnx-v1.tar.gz` |
+| `bge-reranker-v2-m3` | `https://github.com/keerecles/RAG4ArkUI/releases/download/models-v1/bge-reranker-v2-m3-onnx-v1.tar.gz` |
+| 其它 | 报错 · 用 `--url` 自定义 |
+
+⚠️ 默认 URL 当前为占位 · 用户首次准备 ONNX 模型 tarball + push GitHub Release `models-v1` 后真活。
+
+### Tarball 格式约定
+
+```
+bge-m3-onnx-v1.tar.gz
+└── bge-m3-onnx-v1/                          <-- strip_components=1 剥掉
+    ├── model/model.onnx                     # 主模型（或 model.fp16.onnx）
+    ├── tokenizer.json                       # HuggingFace tokenizer 标准格式
+    ├── special_tokens_map.json
+    └── config.json
+```
+
 ## 评估集
 
 `corpus/_eval/queries.yaml` 是检索质量评估集（Day 6）。跑评估：

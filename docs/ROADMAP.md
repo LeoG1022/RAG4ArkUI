@@ -8,16 +8,17 @@
 
 ## 📍 当前位置
 
-**Day 22 完成 · mdBook 文档站 + 1.0 release notes 草稿 · 6 周 MVP 全部能力收尾 ⭐**
+**Day 21b 完成 · `arkui-rag corpus model-pull --name bge-m3` 真活 · 共用 corpus pull 基础设施**
 
 - 9 个 Cargo crate · HTTP + MCP + LSP 三协议全部真活 ⭐
 - 本地 + CI 双路径分发：`make release-local`（host）+ `.github/workflows/release.yml`（4 平台 matrix）
-- 默认 release features **6 项**（http, mcp, lsp, tantivy, typescript, corpus-pull）
-- **mdBook 文档站**：`make book-build` 本地 · push master 触发 `.github/workflows/book.yml` 部署到 GitHub Pages
-- **`docs/RELEASE-NOTES-v1.0.0.md`** 草稿 · 用户改版本号 + push tag `v1.0.0` 即触发 1.0 release
+- 默认 release features 6 项（http, mcp, lsp, tantivy, typescript, corpus-pull）
+- mdBook 文档站：`make book-build` 本地 · `.github/workflows/book.yml` 推 GitHub Pages
+- **`corpus model-pull`** 真活：默认 URL 路由（bge-m3 / bge-reranker-v2-m3）+ 默认 target `~/.arkui-rag/models/<name>/`
+- `docs/RELEASE-NOTES-v1.0.0.md` 草稿
 - Release binary 11 MB / tarball 4.1 MB
-- 18 个 STATUS 文档（规则 #17 生效后强制配套）
-- 25 个 git commit / 历史 17 个工作 Day
+- 19 个 STATUS 文档
+- 26 个 git commit / 历史 17 个工作 Day
 
 ---
 
@@ -76,7 +77,7 @@ gantt
 
 ---
 
-## ✅ 已完成（25 commits）
+## ✅ 已完成（26 commits）
 
 | Commit | Day | Round | 内容 | STATUS |
 |---|---|---|---|---|
@@ -104,7 +105,8 @@ gantt
 | `3ddb3a3` | 20b | 21 | CI matrix release（`.github/workflows/release.yml` · 4 平台 build · tag `v*` 触发 · GitHub Releases 自动上传 ⭐） | [STATUS-day20b](STATUS-day20b-ci-matrix.md) |
 | `f2797e1` | 20c | 22 | pre-existing 阻塞清理（Phase 1 typescript API 对齐 ✅ · Phase 2 chrono pin ✅ · typescript 进默认 features ⭐） | [STATUS-pre-existing-fixes](STATUS-pre-existing-fixes.md) |
 | `5569cc7` | 21 | 23 | `arkui-rag corpus pull` 真活（ureq + tar.gz · feature gated · 默认 release 已含 · 用户无脑接入 ⭐） | [STATUS-corpus-pull](STATUS-corpus-pull.md) |
-| _(本 commit)_ | **22 (当前)** | **24** | **mdBook 文档站 + 1.0 release notes 草稿**（push master 触发 GitHub Pages 自动部署 · `RELEASE-NOTES-v1.0.0.md` 草稿 · MVP 完整收尾 ⭐） | [STATUS-mdbook-doc](STATUS-mdbook-doc.md) |
+| `98bf22d` | 22 | 24 | mdBook 文档站 + 1.0 release notes 草稿（push master 触发 GitHub Pages 自动部署 · `RELEASE-NOTES-v1.0.0.md` 草稿 · MVP 完整收尾 ⭐） | [STATUS-mdbook-doc](STATUS-mdbook-doc.md) |
+| _(本 commit)_ | **21b (当前)** | **25** | **`corpus model-pull` 真活**（重构抽 `download_and_extract` shared helper · 共用 corpus pull 基础设施 · `bge-m3` / `bge-reranker-v2-m3` 默认 URL 路由） | [STATUS-model-pull](STATUS-model-pull.md) |
 
 ---
 
@@ -150,7 +152,7 @@ gantt
 | **20a** ✅ | **本地 host release artifact**（aarch64-apple-darwin · `scripts/release-local.sh` + Makefile） | 端到端 CLI 可下载即用 | ✅ 1 commit |
 | **20b** ✅ | **CI matrix 4 平台**（darwin arm64/x86_64 + linux + win） + GitHub Releases 自动上传（tag `v*` 触发） | 多平台分发自动化 | ✅ 1 commit（本轮） |
 | **21** ✅ | **`arkui-rag corpus pull --url|--from-file` 真活**（ureq 下载 + tar.gz 解压 + path traversal 安全检查） | 用户无脑接入 · 不用手动投放文档 | ✅ 1 commit（本轮） |
-| 21b | `corpus model-pull` 真活（BGE-M3 ONNX · 共用 cmd_corpus_pull 基础设施） | 模型自动下载 | 1 commit |
+| **21b** ✅ | **`arkui-rag corpus model-pull --name bge-m3` 真活**（共用 download_and_extract helper · 默认 URL 路由 + ~/.arkui-rag/models/<name>/ 默认 target） | 模型自动下载 · 共用基础设施 | ✅ 1 commit（本轮） |
 | **22** ✅ | **mdBook 文档站 + 1.0 release notes 草稿**（push master 触发 GitHub Pages 自动部署 · 用户改版本号 + push tag v1.0.0 触发 1.0 release） | MVP 完整收尾 | ✅ 1 commit（本轮） |
 
 ### 🔮 长期演进 · 阶段 3-4（护城河）
