@@ -276,7 +276,10 @@ const DEFAULT_CORPUS_URL: &str =
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    // tracing log 强制写 stderr：MCP/LSP stdio 协议要求 stdout 只含协议数据
+    // 不影响 HTTP server / index / query 等 · 它们用 println! 直接写 stdout 不走 tracing
     tracing_subscriber::fmt()
+        .with_writer(std::io::stderr)
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),

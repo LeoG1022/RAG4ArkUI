@@ -141,8 +141,12 @@ fn walk_corpus(source: &Path) -> Vec<PathBuf> {
         .into_iter()
         .filter_entry(|e| {
             let name = e.file_name().to_string_lossy();
-            // 跳过隐藏目录 + _index/
-            if e.file_type().is_dir() && (name.starts_with('.') || name == "_index") {
+            // 跳过隐藏目录 + _index/ · 但不能 reject root（depth==0）
+            // 否则 tempfile::tempdir() 这种 /tmp/.tmpXXXX 路径会被整个跳过
+            if e.depth() > 0
+                && e.file_type().is_dir()
+                && (name.starts_with('.') || name == "_index")
+            {
                 return false;
             }
             true

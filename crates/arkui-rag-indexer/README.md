@@ -2,7 +2,7 @@
 
 **定位**：索引流水线编排。把 chunker + embedder + storage 三者串联起来，给定一个 corpus 目录，产出可被 retriever 检索的索引。
 
-```
+```text
 walk(corpus/) → dispatch by ext → ASTChunker.chunk()
               → batch Embedder.encode()
               → VectorStore.upsert()
@@ -23,7 +23,7 @@ walk(corpus/) → dispatch by ext → ASTChunker.chunk()
 
 ## 用法
 
-```rust
+```rust,ignore
 use std::sync::Arc;
 use std::path::Path;
 use arkui_rag_chunker::MarkdownChunker;

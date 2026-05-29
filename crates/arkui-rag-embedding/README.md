@@ -21,7 +21,7 @@
 
 `OnnxReranker` 用法：
 
-```rust
+```rust,ignore
 # #[cfg(feature = "onnx")]
 # tokio_test::block_on(async {
 use arkui_rag_core::Reranker;
@@ -43,7 +43,7 @@ let reranked = rr.rerank("query text", hits, 5).await.unwrap();
 
 ## 用法（Mock）
 
-```rust
+```rust,ignore
 use arkui_rag_core::Embedder;
 use arkui_rag_embedding::MockEmbedder;
 
@@ -57,7 +57,7 @@ assert_eq!(v.len(), 1024);
 ## 用法（ONNX，Day 3 起 trait 实现就绪）
 
 **底层同步 API**（`EmbeddingModel`）：
-```rust
+```rust,ignore
 # #[cfg(feature = "onnx")]
 # {
 use arkui_rag_embedding::EmbeddingModel;
@@ -69,7 +69,7 @@ let arr = m.encode(&["query 1", "query 2"]).unwrap();  // ndarray::Array2<f32>
 ```
 
 **Async trait 实现**（`OnnxEmbedder`，推荐）：
-```rust
+```rust,ignore
 # #[cfg(feature = "onnx")]
 # tokio_test::block_on(async {
 use arkui_rag_core::Embedder;

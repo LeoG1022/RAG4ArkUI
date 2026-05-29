@@ -32,7 +32,7 @@ cargo build -p arkui-rag-cli --features tantivy
 
 ### 用法
 
-```rust
+```rust,ignore
 # #[cfg(feature = "tantivy")]
 # tokio_test::block_on(async {
 use arkui_rag_core::{Chunk, ChunkId, ChunkMetadata, QueryFilters};

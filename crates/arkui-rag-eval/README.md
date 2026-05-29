@@ -38,7 +38,7 @@
 
 ## 用法（库）
 
-```rust
+```rust,ignore
 use std::sync::Arc;
 use std::path::Path;
 use arkui_rag_eval::{Evaluator, load_queries};

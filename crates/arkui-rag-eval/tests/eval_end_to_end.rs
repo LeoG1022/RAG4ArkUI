@@ -44,15 +44,17 @@ async fn full_index_then_eval() {
 
     // 写评估集 YAML（MockEmbedder 对同样文本 cosine=1，所以 GT 用文档原文）
     let queries_path = dir.path().join("queries.yaml");
+    // 注：chunk_id 用「内容起始行号」（@10）· 不是 heading 行号（@9）
+    // list.md: frontmatter 5 行 + 空行 + "# List" + 空行 + "## 下拉刷新" + 「ArkUI-X 用...」（line 10）
     let queries_yaml = r#"
 - id: q1
   query: "ArkUI-X 用 Refresh 组件实现下拉刷新。"
   relevant:
-    - "list.md#List/下拉刷新@9"
+    - "list.md#List/下拉刷新@10"
 - id: q2
   query: "推送新页面到路由栈。"
   relevant:
-    - "router.md#Router/pushUrl@9"
+    - "router.md#Router/pushUrl@10"
 - id: q_miss
   query: "完全无关的天气预报"
   relevant:

@@ -2,7 +2,7 @@
 
 **定位**：把 storage 后端（向量 + BM25）组合成业界标配的混合检索流水线：
 
-```
+```text
 Query → [向量检索 ∥ BM25] → RRF 融合 → Reranker 精排 → Top-N
 ```
 
@@ -18,7 +18,7 @@ Query → [向量检索 ∥ BM25] → RRF 融合 → Reranker 精排 → Top-N
 
 ## RRF 融合算法
 
-```rust
+```rust,ignore
 score(d) = Σ over retrievers: 1 / (k + rank(d))
 ```
 

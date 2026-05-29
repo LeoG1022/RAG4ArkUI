@@ -97,10 +97,10 @@ ArkUI-X 用 Refresh 组件实现下拉刷新功能。
 EOF
 
 if [[ $VERBOSE -eq 1 ]]; then
-  cargo run --features mcp -p arkui-rag-cli --quiet -- \
+  cargo run --manifest-path crates/Cargo.toml --features mcp -p arkui-rag-cli --quiet -- \
     index --source "$CORPUS" --index-path "$INDEX" --dim 64
 else
-  cargo run --features mcp -p arkui-rag-cli --quiet -- \
+  cargo run --manifest-path crates/Cargo.toml --features mcp -p arkui-rag-cli --quiet -- \
     index --source "$CORPUS" --index-path "$INDEX" --dim 64 \
     >/dev/null 2>&1
 fi
@@ -130,7 +130,7 @@ echo "═══ [3/4] 启动 MCP server，喂请求，收响应 ═══"
 
 # Server 读完 stdin EOF 后退出。一次性把 REQ_FILE 当 stdin 喂入。
 # stderr 单独捕获到 ERR_FILE 便于诊断。
-if ! cargo run --features mcp -p arkui-rag-cli --quiet -- \
+if ! cargo run --manifest-path crates/Cargo.toml --features mcp -p arkui-rag-cli --quiet -- \
       serve --mcp --index-path "$INDEX" \
       < "$REQ_FILE" > "$RESP_FILE" 2> "$ERR_FILE"; then
   rc=$?
