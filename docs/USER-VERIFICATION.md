@@ -135,10 +135,31 @@ arkui-rag 0.0.1
 ✅ release tarball 端到端可用
 ```
 
-产物在 `dist/`。把 binary 装到 PATH 可选：
+产物在 `dist/`。
+
+### 装到 PATH（推荐 · 用 `make install`）
+
 ```bash
-cp dist/arkui-rag-v0.0.1-aarch64-apple-darwin/arkui-rag /usr/local/bin/
-arkui-rag --version    # 全局可调
+# 一键装到 ~/.local/bin + 自动配 Claude CLI + Desktop MCP
+make install
+```
+
+`make install` 做什么：
+1. `cargo build --release` 产物 `cp` 到 `~/.local/bin/arkui-rag`（用户级 · 不 sudo · 不触发 macOS provenance）
+2. 跑 `--version` 验证装好的 binary 真能跑（exit 0）
+3. 检测 PATH · `~/.local/bin` 在 PATH 里就提示 OK · 不在就提示用户加
+4. `claude mcp add` 重配 Claude Code CLI MCP 用绝对路径
+5. 合并到 `~/Library/Application Support/Claude/claude_desktop_config.json`（Claude Desktop GUI）
+6. 跑 `claude mcp list` 验证 `✓ Connected`
+
+> ⚠️ **不要 `sudo cp` 到 `/usr/local/bin/`** —— macOS Sequoia 对 root-owned + 非 Apple-signed binary 做 `com.apple.provenance` 检查 · binary 启动立刻 SIGKILL（exit 137）· `claude mcp list` 显示 `✗ Failed to connect`。详见 [`docs/MCP-INTEGRATION-CLAUDE-CODE.md`](MCP-INTEGRATION-CLAUDE-CODE.md#macos-provenance-坑)。
+
+### 验证安装
+
+```bash
+which arkui-rag                # 应解析到 ~/.local/bin/arkui-rag
+arkui-rag --version            # arkui-rag 0.0.1
+claude mcp list | grep arkui   # arkui-rag: ... ✓ Connected
 ```
 
 ---

@@ -151,6 +151,14 @@ release-local-verify: release-local
 	@/tmp/arkui-rag-release-verify/arkui-rag-v0.0.1-$$(rustc -vV | awk '/^host:/ {print $$2}')/arkui-rag --version
 	@echo "✅ release tarball 端到端可用"
 
+# Round 37: 一键装到 ~/.local/bin/ + 自动配 Claude CLI / Desktop MCP（不用 sudo · 避开 macOS provenance）
+install: release-local
+	bash scripts/install-binary.sh
+
+# 安装但跳过 MCP 自动配置（适合 CI · 或已用 claude mcp add 配过）
+install-no-mcp: release-local
+	bash scripts/install-binary.sh --skip-mcp
+
 # Day 22: mdBook 文档站
 install-mdbook:
 	@command -v mdbook >/dev/null 2>&1 && echo "✅ 已安装：$$(mdbook --version)" || { \
