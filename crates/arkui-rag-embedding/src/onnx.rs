@@ -9,7 +9,7 @@
 
 #![allow(dead_code)]
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use ndarray::{Array2, Axis};
 use ort::{
     execution_providers::{CPUExecutionProvider, CoreMLExecutionProvider, CUDAExecutionProvider},
@@ -20,9 +20,22 @@ use std::path::Path;
 use std::sync::Arc;
 use tokenizers::Tokenizer;
 
+/// Round 40 Phase 2 helper：把 ort 任何 Error map 到 anyhow::Error。
+///
+/// rc.12 起 ort 用 typed `Error<T>`（如 `Error<SessionBuilder>`）· 含
+/// `NonNull<*>` / `dyn Any` 等非 Send/Sync 字段 · `?` 自动 From 转 anyhow
+/// （要 Send + Sync）失败 · 必须显式 map_err。
+/// Generic E + Display bound 兼容所有 ort Error 类型。
+fn ort_err<E: std::fmt::Display>(prefix: &'static str) -> impl FnOnce(E) -> anyhow::Error {
+    move |e| anyhow::anyhow!("{}: {}", prefix, e)
+}
+
 /// 一个加载好的 Embedding 模型实例，常驻内存。
+///
+/// rc.12: `Session::run` 签名变为 `&mut self` · encode(&self) 不能直接调 ·
+/// 用 `Mutex<Session>` 内部可变（Send + Sync · 适合 spawn_blocking）。
 pub struct EmbeddingModel {
-    session: Session,
+    session: std::sync::Mutex<Session>,
     tokenizer: Tokenizer,
     max_length: usize,
     embed_dim: usize,
@@ -39,22 +52,27 @@ impl EmbeddingModel {
                 CUDAExecutionProvider::default().build(),
                 CPUExecutionProvider::default().with_arena_allocator(true).build(),
             ])
-            .commit()?;
+            .commit();  // rc.12: 返回 bool（true=首次初始化生效 · false=已初始化）· 不是 Result
 
         // 2. 加载 ONNX 模型
         let model_path = model_dir.join("model.onnx");
-        let session = Session::builder()?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(4)?
+        let session = Session::builder()
+            .map_err(ort_err("Session::builder"))?
+            .with_optimization_level(GraphOptimizationLevel::Level3)
+            .map_err(ort_err("with_optimization_level"))?
+            .with_intra_threads(4)
+            .map_err(ort_err("with_intra_threads"))?
             .commit_from_file(&model_path)
-            .with_context(|| format!("加载 ONNX 模型失败: {}", model_path.display()))?;
+            .map_err(|e| {
+                anyhow::anyhow!("加载 ONNX 模型失败 {}: {}", model_path.display(), e)
+            })?;
 
         // 3. 加载 tokenizer
         let tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json"))
             .map_err(|e| anyhow::anyhow!("加载 tokenizer 失败: {}", e))?;
 
         Ok(Self {
-            session,
+            session: std::sync::Mutex::new(session),
             tokenizer,
             max_length: 512,
             embed_dim: 1024,
@@ -82,16 +100,85 @@ impl EmbeddingModel {
             }
         }
 
-        let outputs = self.session.run(ort::inputs![
-            "input_ids" => Tensor::from_array(input_ids)?,
-            "attention_mask" => Tensor::from_array(attention_mask.clone())?,
-        ]?)?;
+        // rc.12: Tensor::from_array 需 (shape, data) tuple · 不再直接吃 ndarray
+        let input_ids_shape = [input_ids.nrows() as i64, input_ids.ncols() as i64];
+        let input_ids_data: Vec<i64> = input_ids.iter().copied().collect();
+        let attention_mask_shape = [attention_mask.nrows() as i64, attention_mask.ncols() as i64];
+        let attention_mask_data: Vec<i64> = attention_mask.iter().copied().collect();
 
-        let hidden_states = outputs[0].try_extract_tensor::<f32>()?;
-        let pooled = self.mean_pooling(&hidden_states.view(), &attention_mask)?;
+        let input_ids_tensor = Tensor::from_array((input_ids_shape, input_ids_data))
+            .map_err(ort_err("Tensor::from_array(input_ids)"))?;
+        let attention_mask_tensor =
+            Tensor::from_array((attention_mask_shape, attention_mask_data))
+                .map_err(ort_err("Tensor::from_array(attention_mask)"))?;
+
+        // rc.12: ort::inputs! 宏返回 Vec 不是 Result · 去掉宏后 ?
+        // rc.12: Session::run 签名 &mut self · 通过 Mutex 拿可变借用
+        let mut session = self
+            .session
+            .lock()
+            .map_err(|e| anyhow::anyhow!("session mutex poisoned: {}", e))?;
+        let outputs = session
+            .run(ort::inputs![
+                "input_ids" => input_ids_tensor,
+                "attention_mask" => attention_mask_tensor,
+            ])
+            .map_err(ort_err("session.run(embed)"))?;
+
+        // rc.12: try_extract_tensor 返回 (Shape, &[f32]) 元组
+        let (shape, flat) = outputs[0]
+            .try_extract_tensor::<f32>()
+            .map_err(ort_err("try_extract_tensor(hidden)"))?;
+        // rc.12: Shape: Deref<Target = [i64]> · 直接当 slice 用
+        let dims: &[i64] = &shape;
+        if dims.len() != 3 {
+            return Err(anyhow::anyhow!(
+                "embed 输出 shape 异常 · 期望 [batch, seq_len, dim] · 实际 {:?}",
+                dims
+            ));
+        }
+        let pooled = self.mean_pooling_from_flat(
+            flat,
+            dims[0] as usize,
+            dims[1] as usize,
+            dims[2] as usize,
+            &attention_mask,
+        );
         Ok(Self::l2_normalize(pooled))
     }
 
+    /// rc.12 后的新 mean pooling · 直接吃 flat &[f32] + shape · 不需 ArrayViewD
+    fn mean_pooling_from_flat(
+        &self,
+        flat: &[f32],
+        batch_size: usize,
+        seq_len: usize,
+        dim: usize,
+        mask: &Array2<i64>,
+    ) -> Array2<f32> {
+        let mut result = Array2::<f32>::zeros((batch_size, dim));
+        for b in 0..batch_size {
+            let mut sum_mask = 0.0_f32;
+            for s in 0..seq_len {
+                let m = mask[[b, s]] as f32;
+                if m > 0.0 {
+                    sum_mask += m;
+                    let off = (b * seq_len + s) * dim;
+                    for d in 0..dim {
+                        result[[b, d]] += flat[off + d] * m;
+                    }
+                }
+            }
+            let denom = sum_mask.max(1e-9);
+            for d in 0..dim {
+                result[[b, d]] /= denom;
+            }
+        }
+        result
+    }
+
+    /// 保留旧 ArrayViewD 版本（兼容历史调用 · 当前未使用）
+    #[allow(dead_code)]
     fn mean_pooling(
         &self,
         hidden: &ndarray::ArrayViewD<f32>,

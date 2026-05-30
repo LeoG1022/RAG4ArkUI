@@ -11,8 +11,8 @@
 
 #![allow(dead_code)]
 
-use anyhow::{Context, Result as AnyResult};
-use ndarray::{Array2, Axis};
+use anyhow::Result as AnyResult;
+use ndarray::Array2;
 use ort::{
     execution_providers::{CPUExecutionProvider, CoreMLExecutionProvider, CUDAExecutionProvider},
     session::{builder::GraphOptimizationLevel, Session},
@@ -22,9 +22,17 @@ use std::path::Path;
 use std::sync::Arc;
 use tokenizers::Tokenizer;
 
+/// Round 40 Phase 2 helper · 同 onnx.rs 同款 · ort Error → anyhow Error
+/// Generic E + Display bound 兼容 ort 所有 typed `Error<T>` 变体
+fn ort_err<E: std::fmt::Display>(prefix: &'static str) -> impl FnOnce(E) -> anyhow::Error {
+    move |e| anyhow::anyhow!("{}: {}", prefix, e)
+}
+
 /// 底层 Reranker 同步 API（设计与 EmbeddingModel 平行）。
+///
+/// rc.12: Mutex 包 Session · 因为 Session::run 改为 &mut self · score(&self) 不能直接调
 pub struct RerankerModel {
-    session: Session,
+    session: std::sync::Mutex<Session>,
     tokenizer: Tokenizer,
     max_length: usize,
 }
@@ -41,22 +49,25 @@ impl RerankerModel {
                 CUDAExecutionProvider::default().build(),
                 CPUExecutionProvider::default().with_arena_allocator(true).build(),
             ])
-            .commit()?;
+            .commit();  // rc.12: bool 返回 · 不是 Result
 
         let model_path = model_dir.join("model.onnx");
-        let session = Session::builder()?
-            .with_optimization_level(GraphOptimizationLevel::Level3)?
-            .with_intra_threads(4)?
+        let session = Session::builder()
+            .map_err(ort_err("Session::builder"))?
+            .with_optimization_level(GraphOptimizationLevel::Level3)
+            .map_err(ort_err("with_optimization_level"))?
+            .with_intra_threads(4)
+            .map_err(ort_err("with_intra_threads"))?
             .commit_from_file(&model_path)
-            .with_context(|| {
-                format!("加载 Reranker ONNX 模型失败: {}", model_path.display())
+            .map_err(|e| {
+                anyhow::anyhow!("加载 Reranker ONNX 模型失败 {}: {}", model_path.display(), e)
             })?;
 
         let tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json"))
             .map_err(|e| anyhow::anyhow!("加载 reranker tokenizer 失败: {}", e))?;
 
         Ok(Self {
-            session,
+            session: std::sync::Mutex::new(session),
             tokenizer,
             max_length: 512,
         })
@@ -88,15 +99,37 @@ impl RerankerModel {
             }
         }
 
-        let outputs = self.session.run(ort::inputs![
-            "input_ids" => Tensor::from_array(input_ids)?,
-            "attention_mask" => Tensor::from_array(attention_mask)?,
-        ]?)?;
+        // rc.12: Tensor::from_array 需 (shape, data) tuple
+        let input_ids_shape = [input_ids.nrows() as i64, input_ids.ncols() as i64];
+        let input_ids_data: Vec<i64> = input_ids.iter().copied().collect();
+        let attention_mask_shape = [attention_mask.nrows() as i64, attention_mask.ncols() as i64];
+        let attention_mask_data: Vec<i64> = attention_mask.iter().copied().collect();
 
-        // 输出 shape 通常是 [batch, 1] 或 [batch]，取出 logits
-        let logits = outputs[0].try_extract_tensor::<f32>()?;
-        let shape = logits.shape().to_vec();
-        let flat: Vec<f32> = logits.iter().copied().collect();
+        let input_ids_tensor = Tensor::from_array((input_ids_shape, input_ids_data))
+            .map_err(ort_err("Tensor::from_array(input_ids)"))?;
+        let attention_mask_tensor =
+            Tensor::from_array((attention_mask_shape, attention_mask_data))
+                .map_err(ort_err("Tensor::from_array(attention_mask)"))?;
+
+        // rc.12: Session::run 签名 &mut self · 通过 Mutex 拿可变借用
+        let mut session = self
+            .session
+            .lock()
+            .map_err(|e| anyhow::anyhow!("session mutex poisoned: {}", e))?;
+        let outputs = session
+            .run(ort::inputs![
+                "input_ids" => input_ids_tensor,
+                "attention_mask" => attention_mask_tensor,
+            ])
+            .map_err(ort_err("session.run(rerank)"))?;
+
+        // rc.12: try_extract_tensor 返回 (Shape, &[f32]) 元组
+        let (shape_obj, flat_slice) = outputs[0]
+            .try_extract_tensor::<f32>()
+            .map_err(ort_err("try_extract_tensor(rerank logits)"))?;
+        // rc.12: Shape: Deref<Target = [i64]> · 直接当 slice 用
+        let shape: Vec<usize> = (&*shape_obj).iter().map(|&d| d as usize).collect();
+        let flat: Vec<f32> = flat_slice.to_vec();
 
         // 兼容 [batch, 1] 和 [batch] 两种 shape
         let scores: Vec<f32> = match shape.len() {
