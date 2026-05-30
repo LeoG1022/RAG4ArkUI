@@ -5,26 +5,21 @@
 ## 快速接入
 
 ```bash
-# 1. 启 MCP server（独立进程 · 不要后台跑）
-arkui-rag serve --mcp \
-    --index-path ./corpus/official/index.json \
+# 1. 建索引（用你的 corpus）
+arkui-rag index \
+    --source /path/to/corpus \
+    --index-path ~/.arkui-rag/index.json \
     --bm25 tantivy
-```
 
-```jsonc
-// 2. 在 ~/.claude/mcp_servers.json 注册
-{
-  "mcpServers": {
-    "arkui-rag": {
-      "command": "/usr/local/bin/arkui-rag",
-      "args": [
-        "serve", "--mcp",
-        "--index-path", "/path/to/corpus/official/index.json",
-        "--bm25", "tantivy"
-      ]
-    }
-  }
-}
+# 2. 用 claude mcp add 注册（不要手动编辑 JSON · 不要写 ~/.claude/mcp.json · 那个路径是错的）
+claude mcp add --scope user arkui-rag arkui-rag \
+    -- serve --mcp \
+       --index-path ~/.arkui-rag/index.json \
+       --bm25 tantivy
+
+# 3. 验证健康
+claude mcp list
+# arkui-rag: ... - ✓ Connected
 ```
 
 完整接入指南：[Claude Code MCP 接入指南](../reference/mcp-integration.md)。

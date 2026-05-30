@@ -10,7 +10,8 @@
 ```
                     ┌─────────────────────────┐
                     │   Claude Code (CLI)     │
-                    │   ~/.claude/mcp.json    │
+                    │   ~/.claude.json        │
+                    │   (claude mcp add ...)  │
                     └────────────┬────────────┘
                                  │ fork + stdio
                                  ▼
@@ -89,62 +90,78 @@ arkui-rag --version
 
 ## 二、配置 Claude Code
 
-### 2.1 编辑 `~/.claude/mcp.json`
+> ⚠️ **不要手动编辑 `~/.claude/mcp.json`** —— 那是误传的旧路径，Claude Code 不读它。
+> 实际配置写入 `~/.claude.json`（顶层 `mcpServers` 节）· 推荐用 `claude mcp add` 命令管理 · 自动处理路径、scope、健康检查。
 
-如果文件不存在，新建：
-
-```json
-{
-  "mcpServers": {
-    "arkui-rag": {
-      "command": "arkui-rag",
-      "args": [
-        "serve",
-        "--mcp",
-        "--index-path", "/Users/me/RAG4ArkUI/corpus/_index/index.json"
-      ]
-    }
-  }
-}
-```
-
-**关键字段**：
-
-| 字段 | 说明 |
-|---|---|
-| `command` | 二进制路径。如 PATH 已配 `arkui-rag` 直接写名字；否则用绝对路径 `/usr/local/bin/arkui-rag` |
-| `args` | 至少含 `serve --mcp --index-path <你的索引产物绝对路径>` |
-
-### 2.2 加全功能参数（可选）
-
-```json
-{
-  "mcpServers": {
-    "arkui-rag": {
-      "command": "arkui-rag",
-      "args": [
-        "serve", "--mcp",
-        "--index-path", "/Users/me/RAG4ArkUI/corpus/_index/index.json",
-        "--embedder", "onnx",
-        "--model-path", "/Users/me/.arkui-rag/models/bge-m3-onnx",
-        "--bm25", "tantivy",
-        "--vector", "lancedb",
-        "--rerank", "onnx",
-        "--reranker-model-path", "/Users/me/.arkui-rag/models/bge-reranker-v2-m3",
-        "--hyde", "mock"
-      ]
-    }
-  }
-}
-```
-
-**注意**：二进制必须用对应 feature 编译（`build-full` 已开全）。
-
-### 2.3 重启 Claude Code
+### 2.1 用 `claude mcp add` 注册（推荐）
 
 ```bash
-# 退出当前 Claude Code 进程，重新启动
-# Claude Code 启动时读 ~/.claude/mcp.json 并 fork 子进程
+claude mcp add --scope user arkui-rag arkui-rag \
+    -- serve --mcp \
+       --index-path /Users/me/.arkui-rag/index.json \
+       --bm25 tantivy
+```
+
+**语法解析**：
+
+```
+claude mcp add [--scope user|project|local] <名称> <command> [-- <args...>]
+```
+
+| 位置 | 值 | 说明 |
+|---|---|---|
+| `--scope user` | 用户级 | 全局可用（任意 cwd 启动 Claude Code 都能见到）· 项目级用 `--scope project` |
+| `<名称>` | `arkui-rag` | 在 Claude Code 里显示为 `mcp__arkui-rag__<tool_name>` 前缀 |
+| `<command>` | `arkui-rag` | 二进制名（PATH 已配）或绝对路径 `/usr/local/bin/arkui-rag` |
+| `--` 分隔符 | 必须 | 区分 `claude mcp` 自己的 flag 和传给子进程的 args |
+| `<args...>` | `serve --mcp ...` | arkui-rag 的子命令 + 索引参数 |
+
+**验证**：
+
+```bash
+claude mcp list
+# 期望看到：
+#   arkui-rag: arkui-rag serve --mcp --index-path ... --bm25 tantivy - ✓ Connected
+```
+
+`✓ Connected` = Claude Code 已经成功跑了一次 `initialize` 握手。
+
+### 2.2 加全功能参数（可选 · 真实 ONNX + LanceDB + Reranker + HyDE）
+
+```bash
+claude mcp add --scope user arkui-rag arkui-rag \
+    -- serve --mcp \
+       --index-path /Users/me/.arkui-rag/index.json \
+       --embedder onnx \
+       --model-path /Users/me/.arkui-rag/models/bge-m3-onnx \
+       --bm25 tantivy \
+       --vector lancedb \
+       --rerank onnx \
+       --reranker-model-path /Users/me/.arkui-rag/models/bge-reranker-v2-m3 \
+       --hyde mock
+```
+
+**前提**：二进制必须用对应 feature 编译（`make build-full` 含全部 · `make release-local-verify` 含轻量套件）。
+
+### 2.3 改 / 删 / 看
+
+```bash
+claude mcp list                       # 列出所有 MCP server + 健康检查
+claude mcp get arkui-rag              # 看 arkui-rag 的详细配置
+claude mcp remove arkui-rag           # 删除（如要换参数 · remove 后重 add）
+```
+
+或者手动看 / 改 `~/.claude.json` 顶层 `mcpServers.arkui-rag`：
+
+```bash
+python3 -c "import json; cfg=json.load(open('/Users/me/.claude.json')); print(json.dumps(cfg.get('mcpServers', {}).get('arkui-rag'), indent=2, ensure_ascii=False))"
+```
+
+### 2.4 重启 Claude Code
+
+```bash
+# 必须完全退出 · 不只是关窗口（macOS Cmd-Q · 或 pkill -i claude）
+# Claude Code 启动时读 ~/.claude.json 并 fork 子进程
 ```
 
 启动成功后，Claude Code 主进程会看到 `arkui-rag` MCP server，下方应出现 4 个工具：
@@ -246,10 +263,17 @@ cargo test -p arkui-rag-server --features mcp
 ### 症状 1：Claude Code 启动看不到 arkui-rag 工具
 
 **排查**：
-1. 检查 `~/.claude/mcp.json` JSON 语法（`jq . ~/.claude/mcp.json`）
-2. 检查 `command` 是否在 PATH 内（`which arkui-rag`）
-3. 检查二进制是否含 mcp feature：`arkui-rag serve --mcp 2>&1 | head -3`，应看到 "🔌 MCP server starting on stdio"
-4. 看 Claude Code 日志（macOS：`~/Library/Logs/Claude/`）
+1. `claude mcp list` 是否列出 arkui-rag 且 `✓ Connected`？
+   - 没列出 → 配置没写进去 · 重跑 §2.1 的 `claude mcp add` 命令
+   - 列出但 `! Failed` / `! Needs auth` → 看后续步骤
+2. 看 `~/.claude.json` 顶层 `mcpServers.arkui-rag` 是否合法：
+   ```bash
+   python3 -c "import json; print(json.dumps(json.load(open('/Users/me/.claude.json')).get('mcpServers',{}).get('arkui-rag'),indent=2))"
+   ```
+3. 检查 `command` 是否在 PATH 内：`which arkui-rag`
+4. 检查二进制是否含 mcp feature：`arkui-rag serve --mcp 2>&1 | head -3` · 应看到 stderr log `MCP server starting on stdio`
+5. 看 Claude Code 日志（macOS：`~/Library/Logs/Claude/` · 找 `mcp*.log`）
+6. **常见坑**：你之前是不是看到过「编辑 `~/.claude/mcp.json`」的旧文档？那个路径错的 · Claude Code 不读 · 删了它（`rm ~/.claude/mcp.json`）只保留 `~/.claude.json` 顶层配置即可
 
 ### 症状 2：JSON-RPC 响应有 error -32601
 
