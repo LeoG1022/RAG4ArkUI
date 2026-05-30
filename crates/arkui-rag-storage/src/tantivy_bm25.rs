@@ -52,16 +52,31 @@ struct Fields {
 pub struct TantivyBM25Index {
     index: Index,
     reader: IndexReader,
-    writer: Arc<Mutex<IndexWriter>>,
+    /// `None` = 只读模式（`open_read_only` 打开 · 不持 IndexWriter 锁 · 多 instance 共存）
+    /// `Some` = 写模式（`open` 打开 · 持独占写锁 · `upsert` 可用）
+    writer: Option<Arc<Mutex<IndexWriter>>>,
     fields: Fields,
 }
 
 impl TantivyBM25Index {
-    /// 打开（或创建）指定目录下的 Tantivy 索引。
+    /// 打开（或创建）指定目录下的 Tantivy 索引 · **写模式**（持独占 IndexWriter 锁）。
     ///
-    /// 路径约定：`<corpus>/_index/bm25/`。目录不存在会自动创建。
-    /// 同一进程内不要并发 open 同一目录（Tantivy 锁文件冲突）。
+    /// 用于 `arkui-rag index` 子命令。路径约定：`<corpus>/_index/bm25/`。
+    /// 目录不存在会自动创建。同一目录任何时刻只能有一个写者。
     pub fn open(dir: &Path) -> Result<Self> {
+        Self::open_with_mode(dir, true)
+    }
+
+    /// 只读打开（不持写锁） · 多 instance 共存。
+    ///
+    /// 用于 `arkui-rag serve --mcp/--http/--lsp` / `query` / `eval` 等只检索路径。
+    /// Claude Code (CLI) 和 Claude Desktop 可同时连同一个 binary 而不冲突。
+    /// `upsert` 在该模式下返回错误。索引必须已存在（不创建）。
+    pub fn open_read_only(dir: &Path) -> Result<Self> {
+        Self::open_with_mode(dir, false)
+    }
+
+    fn open_with_mode(dir: &Path, writable: bool) -> Result<Self> {
         let schema = build_schema();
         let fields = extract_fields(&schema);
 
@@ -87,14 +102,20 @@ impl TantivyBM25Index {
             .reload_policy(ReloadPolicy::OnCommitWithDelay)
             .try_into()
             .map_err(|e| RagError::Storage(format!("reader build: {}", e)))?;
-        let writer = index
-            .writer(WRITER_HEAP_BYTES)
-            .map_err(|e| RagError::Storage(format!("writer init: {}", e)))?;
+
+        let writer = if writable {
+            let w = index
+                .writer(WRITER_HEAP_BYTES)
+                .map_err(|e| RagError::Storage(format!("writer init: {}", e)))?;
+            Some(Arc::new(Mutex::new(w)))
+        } else {
+            None
+        };
 
         Ok(Self {
             index,
             reader,
-            writer: Arc::new(Mutex::new(writer)),
+            writer,
             fields,
         })
     }
@@ -167,7 +188,14 @@ fn chunk_type_str(t: ChunkType) -> &'static str {
 #[async_trait]
 impl BM25Index for TantivyBM25Index {
     async fn upsert(&self, chunks: &[Chunk]) -> Result<()> {
-        let mut w = self.writer.lock().unwrap();
+        let writer = self.writer.as_ref().ok_or_else(|| {
+            RagError::Storage(
+                "TantivyBM25Index 以 open_read_only 模式打开 · upsert 不可用 · \
+                 重建索引请用 `arkui-rag index`（持写锁）"
+                    .into(),
+            )
+        })?;
+        let mut w = writer.lock().unwrap();
         for chunk in chunks {
             // 先按 id 删旧 doc（保证 upsert 语义）
             let id_term = Term::from_field_text(self.fields.id, chunk.id.as_str());
@@ -198,6 +226,10 @@ impl BM25Index for TantivyBM25Index {
         }
         w.commit()
             .map_err(|e| RagError::Storage(format!("commit: {}", e)))?;
+        // OnCommitWithDelay 是 background reload · 测试 / 立即 query 场景需要同步刷一次
+        self.reader
+            .reload()
+            .map_err(|e| RagError::Storage(format!("reader reload: {}", e)))?;
         Ok(())
     }
 
@@ -288,13 +320,21 @@ impl BM25Index for TantivyBM25Index {
     }
 
     async fn delete(&self, ids: &[ChunkId]) -> Result<()> {
-        let mut w = self.writer.lock().unwrap();
+        let writer = self.writer.as_ref().ok_or_else(|| {
+            RagError::Storage(
+                "TantivyBM25Index 以 open_read_only 模式打开 · delete 不可用".into(),
+            )
+        })?;
+        let mut w = writer.lock().unwrap();
         for id in ids {
             let term = Term::from_field_text(self.fields.id, id.as_str());
             w.delete_term(term);
         }
         w.commit()
             .map_err(|e| RagError::Storage(format!("commit (delete): {}", e)))?;
+        self.reader
+            .reload()
+            .map_err(|e| RagError::Storage(format!("reader reload (delete): {}", e)))?;
         Ok(())
     }
 }
@@ -465,5 +505,54 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(hits.len(), 1);
+    }
+
+    /// Round 36 · 多 instance 共存（多 server reader 不冲突）
+    /// 修复前：第二个 `open()` 拿 IndexWriter 锁失败 · LockBusy。
+    /// 修复后：`open_read_only()` 不持写锁 · 任意多个 reader 可同时活。
+    #[tokio::test]
+    async fn read_only_allows_concurrent_multi_instance() {
+        let dir = tempfile::tempdir().unwrap();
+        // 先用 writer 写入数据，关闭 writer
+        {
+            let w = TantivyBM25Index::open(dir.path()).unwrap();
+            w.upsert(&[mk_chunk("x", "shared multi-reader content", "x.md")])
+                .await
+                .unwrap();
+        }
+
+        // 三个 reader 同时活 · 模拟 Claude Code + Claude Desktop + manual stdio 三处接同一 binary
+        let r1 = TantivyBM25Index::open_read_only(dir.path()).unwrap();
+        let r2 = TantivyBM25Index::open_read_only(dir.path()).unwrap();
+        let r3 = TantivyBM25Index::open_read_only(dir.path()).unwrap();
+        for r in [&r1, &r2, &r3] {
+            let hits = r
+                .search("shared", 5, &QueryFilters::default())
+                .await
+                .unwrap();
+            assert_eq!(hits.len(), 1, "每个 reader 都应能查到");
+            assert_eq!(hits[0].chunk.id.as_str(), "x");
+        }
+    }
+
+    /// Round 36 · read_only 模式下 upsert 必须拒绝（fail-fast 防误用）
+    #[tokio::test]
+    async fn read_only_upsert_returns_error() {
+        let dir = tempfile::tempdir().unwrap();
+        // 先建索引
+        {
+            let w = TantivyBM25Index::open(dir.path()).unwrap();
+            w.upsert(&[mk_chunk("seed", "any", "s.md")]).await.unwrap();
+        }
+        let r = TantivyBM25Index::open_read_only(dir.path()).unwrap();
+        let err = r
+            .upsert(&[mk_chunk("new", "should fail", "n.md")])
+            .await
+            .expect_err("read_only upsert 必须报错");
+        assert!(
+            err.to_string().contains("read_only") || err.to_string().contains("不可用"),
+            "错误提示应指引用户用 `arkui-rag index` · 实际: {}",
+            err
+        );
     }
 }

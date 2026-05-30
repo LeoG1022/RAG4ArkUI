@@ -666,24 +666,36 @@ async fn build_lancedb_new(
 }
 
 /// 构造 BM25 实例 + 报告 kind 名（写入索引元数据 / 防错配）。
-fn build_bm25(kind: Bm25Kind, index_path: &Path) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
+///
+/// `writable=true` 仅 `arkui-rag index` 用（持 Tantivy 写锁 · 同目录独占）。
+/// `writable=false` 用于 query / eval / serve（不持写锁 · 多 instance 共存
+/// · 如 Claude Code + Claude Desktop 同时连同一 binary）。
+fn build_bm25(
+    kind: Bm25Kind,
+    index_path: &Path,
+    writable: bool,
+) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
     match kind {
         Bm25Kind::Memory => Ok((Arc::new(InMemoryBM25Index), "memory")),
-        Bm25Kind::Tantivy => build_tantivy(index_path),
+        Bm25Kind::Tantivy => build_tantivy(index_path, writable),
     }
 }
 
 #[cfg(feature = "tantivy")]
-fn build_tantivy(index_path: &Path) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
+fn build_tantivy(index_path: &Path, writable: bool) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
     use arkui_rag_storage::TantivyBM25Index;
     let dir = bm25_dir_from(index_path);
-    let bm = TantivyBM25Index::open(&dir)
-        .map_err(|e| anyhow::anyhow!("打开 Tantivy 索引目录 {} 失败: {}", dir.display(), e))?;
+    let bm = if writable {
+        TantivyBM25Index::open(&dir)
+    } else {
+        TantivyBM25Index::open_read_only(&dir)
+    }
+    .map_err(|e| anyhow::anyhow!("打开 Tantivy 索引目录 {} 失败: {}", dir.display(), e))?;
     Ok((Arc::new(bm), "tantivy"))
 }
 
 #[cfg(not(feature = "tantivy"))]
-fn build_tantivy(_index_path: &Path) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
+fn build_tantivy(_index_path: &Path, _writable: bool) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
     anyhow::bail!(
         "本二进制未启用 tantivy feature。重新构建：\n\
          \tcargo build -p arkui-rag-cli --features tantivy --release\n\
@@ -752,7 +764,8 @@ async fn cmd_index(
     let (embedder, model_id_used, dim) =
         build_embedder(kind, model_path, model_id, mock_dim).await?;
     let vector_backend = build_vector_new(vector_kind, index_path, &model_id_used, dim).await?;
-    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
+    // index 写路径：需要 Tantivy 写锁（独占 · 同目录此时不能有 serve 在跑）
+    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path, true)?;
     let dispatcher = build_dispatcher();
 
     let indexer = Indexer::new(dispatcher, embedder, vector_backend.as_store(), bm25);
@@ -851,7 +864,7 @@ async fn cmd_query(
     if matches!(vector_kind, VectorKind::Memory) && query_dim != dim {
         anyhow::bail!("embedder dim ({}) 与索引 dim ({}) 不匹配", query_dim, dim);
     }
-    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
+    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path, false)?;
     let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
     let rerank_name: String = reranker_opt
         .as_ref()
@@ -1014,7 +1027,7 @@ async fn cmd_eval(
     if matches!(vector_kind, VectorKind::Memory) && query_dim != dim {
         anyhow::bail!("embedder dim 不匹配：{} vs {}", query_dim, dim);
     }
-    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
+    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path, false)?;
     let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
     let rerank_name: String = reranker_opt
         .as_ref()
@@ -1166,7 +1179,7 @@ async fn serve_mcp_impl(
     let (embedder, query_model_id, _query_dim) =
         build_embedder(embedder_kind, model_path, model_id_for_build, dim).await?;
 
-    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
+    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path, false)?;
     let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
     let (enhancer, _hyde_name) = build_enhancer(hyde_kind);
 
@@ -1300,7 +1313,7 @@ async fn serve_lsp_impl(
     let (embedder, query_model_id, _query_dim) =
         build_embedder(embedder_kind, model_path, model_id_for_build, dim).await?;
 
-    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
+    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path, false)?;
     let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
     let (enhancer, _hyde_name) = build_enhancer(hyde_kind);
 
@@ -1440,7 +1453,7 @@ async fn serve_http_impl(
     let (embedder, query_model_id, _query_dim) =
         build_embedder(embedder_kind, model_path, model_id_for_build, dim).await?;
 
-    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path)?;
+    let (bm25, bm25_name) = build_bm25(bm25_kind, index_path, false)?;
     let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
     let (enhancer, _hyde_name) = build_enhancer(hyde_kind);
 
