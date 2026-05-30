@@ -56,7 +56,28 @@ make install             # 装到 ~/.local/bin + 自动配 Claude CLI 和 Deskto
 3. 自动合并 `~/Library/Application Support/Claude/claude_desktop_config.json`（Claude Desktop GUI）
 4. 跑 `claude mcp list` 验证 `✓ Connected`
 
-完了之后重启 Claude（CLI: 退当前 + `claude` · Desktop: `pkill -i Claude && open -a Claude`）· 新 chat 调 `arkui_search_docs` 立刻可用。
+完了之后重启 Claude（CLI: 退当前 + `claude` · Desktop: `pkill -i Claude && open -a Claude` · opencode: 退当前 tui + `opencode`）· 新 chat 调 `arkui_search_docs` 立刻可用。
+
+### 反向操作 · `make uninstall`
+
+```bash
+# 默认 dry-run · 只显示要做什么 · 不真删
+make uninstall
+
+# 真执行（删 binary + 移除三端 MCP 配置 · 保留索引）
+make uninstall-yes
+# 或者：bash scripts/uninstall-binary.sh --yes
+```
+
+`make uninstall` 反向覆盖三端：
+
+1. `~/.local/bin/arkui-rag` mv 到 `.uninstalled.<时间戳>`（可恢复 · 不 rm）
+2. `claude mcp remove arkui-rag --scope user`
+3. Python del `claude_desktop_config.json` 顶层 `mcpServers.arkui-rag`（先备份）
+4. Python del `opencode.json` 顶层 `mcp.arkui-rag`（先备份）
+5. **索引 `~/.arkui-rag/` 保留**（数据可能重要 · 用户手动 `rm -rf` 决定）
+
+恢复任意一项都有备份：`mv ~/.local/bin/arkui-rag.uninstalled.* ~/.local/bin/arkui-rag` / 配置文件 `.bak.<时间戳>`。
 
 下面是手动详细步骤（不愿用 `make install` 时参考）+ 各种坑点说明。
 

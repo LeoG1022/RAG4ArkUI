@@ -159,6 +159,14 @@ install: release-local
 install-no-mcp: release-local
 	bash scripts/install-binary.sh --skip-mcp
 
+# Round 39: 反向操作 · 删 binary + 移除三端 MCP 配置（默认 dry-run · 加 ARGS=--yes 真删）
+uninstall:
+	bash scripts/uninstall-binary.sh $(ARGS)
+
+# 真删（不需要 ARGS=--yes 这种写法时用）· 直接 make uninstall-yes
+uninstall-yes:
+	bash scripts/uninstall-binary.sh --yes
+
 # Day 22: mdBook 文档站
 install-mdbook:
 	@command -v mdbook >/dev/null 2>&1 && echo "✅ 已安装：$$(mdbook --version)" || { \
