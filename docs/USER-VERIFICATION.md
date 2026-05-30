@@ -36,6 +36,34 @@ make check
 
 **失败时**：粘 cargo error 给我。
 
+> 💡 **裸 `cargo build` 也能用了**（自 2026-05-30 起）
+>
+> `arkui-rag-cli` 的 `default = ["http", "mcp", "lsp", "tantivy", "typescript", "corpus-pull"]`
+> 已设为「能用」组合 · 跟 `scripts/release-local.sh DEFAULT_FEATURES` 对齐。
+>
+> 推荐三种 build 方式 · 都能产出**真能接 Claude Code** 的 binary：
+>
+> ```bash
+> # 方式 A · 推荐：走 release-local 脚本 + 自动 tarball 验证
+> make release-local-verify
+>
+> # 方式 B · 快路径：裸 cargo build · 默认 features 已含三协议 + tantivy
+> cd crates && cargo build --release -p arkui-rag-cli
+>
+> # 方式 C · 显式声明 features（覆盖默认 · 想关某些时用）
+> cd crates && cargo build --release -p arkui-rag-cli \
+>     --no-default-features --features http,mcp,tantivy
+> ```
+>
+> **不在默认里**（需显式 `--features X` 才开）：
+> - `onnx` —— ort 2.0 RC 整链路 broken（task #87）
+> - `lancedb` —— arrow/lance 编译 10+ 分钟 · 用户决定何时承担
+> - `kotlin` / `swift` —— 小众语言 chunker
+>
+> **症状识别**：跑 `arkui-rag index --bm25 tantivy` 报 `本二进制未启用 tantivy feature`
+> = 你装到 PATH 的 binary 是**老版本**或**别人裸 build** 的 default=[] 产物 ·
+> 重新走方式 A/B/C 重 build + `sudo cp` 覆盖。
+
 ---
 
 ## 2. 全 workspace 测试（4-5 分钟）

@@ -32,7 +32,14 @@ flate2 = { workspace = true, optional = true }
 tar = { workspace = true, optional = true }
 
 [features]
-default = []
+# 默认开「能用」组合：三协议 + Tantivy BM25 + TypeScript/ArkTS 切分 + corpus 工具。
+# 与 scripts/release-local.sh DEFAULT_FEATURES 一致 · 用户裸跑 `cargo build --release`
+# 也能得到一个真正能接 Claude Code / 跑 mcp-demo 的 binary。
+# 显式排除：
+#   - onnx     · ort 2.0 RC 整链路 broken（task #87）· opt-in 等迁移完
+#   - lancedb  · arrow/lance 编译 10+ 分钟 · 用户显式 `--features lancedb` 才拉
+#   - kotlin/swift · 小众语言 chunker · 按需开
+default = ["http", "mcp", "lsp", "tantivy", "typescript", "corpus-pull"]
 # 启用后 index/query 可选 --embedder onnx --model-path ...，转发 arkui-rag-embedding/onnx
 onnx = ["arkui-rag-embedding/onnx"]
 # 启用后 index/query 可选 --bm25 tantivy，转发 arkui-rag-storage/tantivy
