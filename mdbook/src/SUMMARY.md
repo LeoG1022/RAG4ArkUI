@@ -39,3 +39,4 @@
     - [mdBook](reference/concepts/mdbook.md)
     - [tree-sitter](reference/concepts/tree-sitter.md)
     - [MVP](reference/concepts/mvp.md)
+    - [ONNX 链路](reference/concepts/onnx-chain.md)

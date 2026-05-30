@@ -49,7 +49,10 @@ clap = { version = "4.5", features = ["derive"] }
 ndarray = "0.16"
 
 # ONNX 推理（embedding crate 的 `onnx` feature 启用）
-ort = { version = "2.0.0-rc.4", default-features = false, features = ["load-dynamic", "ndarray"] }
+# Round 40 修：原 load-dynamic 触发 ort 自身 vitis.rs bug（VitisAI 字段在 ortsys 不存在）
+# 改用默认 features（download-binaries 静态链接 ONNX Runtime · binary 大一些但稳定）
+# 详见 docs/concepts/onnx-chain.md
+ort = { version = "2.0.0-rc.12", features = ["ndarray"] }
 tokenizers = { version = "0.20", default-features = false, features = ["onig"] }
 
 # BM25 倒排索引（storage crate 的 tantivy feature 用）
