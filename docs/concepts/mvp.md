@@ -11,7 +11,14 @@
 | 核心价值闭环 | 拿一个本地 corpus + 自然语言 query → 返回带引用溯源的 Top-K 命中 → 三协议（HTTP / MCP / LSP）给消费方调 |
 | 排除 | DevEco Plugin / VSCode Extension（IDE 集成层）· XDB 错误飞轮 · Code GraphRAG 等阶段 3-4 长期能力 |
 
-## 当前 MVP 完成度（task #81 + Phase A/B/C 后 ~92%）
+## 当前 MVP 完成度（Round 42 后 · **100%** ✅）
+
+> Round 40-42 解锁了最后 blocker · ONNX 真语义检索端到端跑通：
+> - Round 40 Phase 1：ort 库 broken 根因（load-dynamic 撞 vitis bug）+ Cargo.toml 改
+> - Round 41 Phase 2：47 个 rc.4 → rc.12 API 漂移修复 · `cargo build --features onnx` 真出 binary
+> - Round 42 Phase 3-4：用户下载 BGE-M3 ONNX（2.2GB hf-mirror）· 真索引（dim=1024）· **Top-1 命中率从 mock 3/6 → onnx 6/6**
+
+工程完成度：
 
 - ✅ 引擎：Hybrid + Reranker + HyDE + Parent-Child + 评估闭环
 - ✅ 三协议：HTTP + MCP + LSP 全实装
@@ -19,9 +26,11 @@
 - ✅ 分发：本地 + 4 平台 CI matrix
 - ✅ corpus + model 一键 pull
 - ✅ mdBook 文档站 + 用户验证清单
-- ❌ 用户首推 master + Settings→Pages（让站真上线）
-- ❌ 用户 push tag v1.0.0（出 1.0 release page）
-- ❌ ONNX 真语义（task #87 blocker · 仍 mock-384）
+- ✅ **ONNX 真语义 embedding（task #87 解锁）· BGE-M3 1024-dim · CPU 推理 ~4s/query**
+- ⏳ 用户首推 master + Settings→Pages（让站真上线 · task #84）
+- ⏳ 用户 push tag v1.0.0（出 1.0 release page · task #85）
+
+只剩两个**用户操作**项（推 master / push tag）· 工程本身 100%。
 
 「MVP 上线」= 让代码 + 文档 + release 包都对外可见 · 不只在本地 repo 里待着。
 

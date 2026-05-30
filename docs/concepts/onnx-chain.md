@@ -1,6 +1,7 @@
 # ONNX 链路
 
-> 状态：当前**未真活** · ort 2.0 RC 编译 broken · 见 task #87 · 本文档为决策梳理快照（Round 40）。
+> 状态：**已真活** ✅ · Round 40-42 完成 ort 升级 + API 修 + 端到端验证。
+> 本文档保留 Round 40 决策梳理作为历史快照 · 末尾追加 Round 42 实测数据。
 
 ## 一句话
 
@@ -126,10 +127,27 @@ ONNX 链路不只是 embedder 推理 · 还有：
 | cosine 相似度 | 两个坐标的距离 |
 | BGE-M3 vs Mock | 「真翻译」vs「随机生成数字」|
 
+## Round 42 实测对比（task #87 解锁）
+
+下载 BGE-M3 ONNX 真模型（2.2GB · hf-mirror）后 · 在 mapping-* 6 个真 GT query 上对比：
+
+| 指标 | Mock 哈希 384-dim | **BGE-M3 真语义 1024-dim** |
+|---|---|---|
+| Top-1 命中 | 3/6（50%） | **6/6（100%）** |
+| Latency p50 | ~48ms | ~4000ms（CPU only · CoreML EP 未启） |
+
+Mock 命中的 3 个是 BM25 关键词侥幸（query 含直接关键词时蒙对）· 真语义 query（`LazyForEach 性能优化` / `Coroutines 改 ArkUI-X` / `BenchmarkRunner 性能测试`）mock **全 fail · onnx 全命中**。
+
+性能优化项（Round 43+）：
+- 启用 `ort/coreml` Cargo feature · 用 Apple Silicon GPU 加速（预期 < 500ms）
+- 可选 batch encode · 多 chunk 同时推理
+
 ## 相关链接
 
 - 现状代码：[`crates/arkui-rag-embedding/src/`](../../crates/arkui-rag-embedding/src/)
 - 技术方案 §7.2：[`docs/RAG4ArkUI-完整技术方案.md`](../RAG4ArkUI-完整技术方案.md)（onnx.rs 源头）
-- Task #87 跟踪：本文档「现状盘点」节
 - 业界对比：[`docs/concepts/tree-sitter.md`](tree-sitter.md)（类似「跨语言 AST parser」选型）
-- 决策上下文：`feedback/features/rag4arkui-core/40-2026-05-30-onnx-chain-decision.md`（Round 40 归档）
+- 决策上下文：
+  - Round 40 归档：`feedback/features/rag4arkui-core/40-2026-05-30-onnx-chain-decision.md`
+  - Round 41 归档：`feedback/features/rag4arkui-core/41-2026-05-30-onnx-rc12-api-fix.md`
+  - **Round 42 归档：`feedback/features/rag4arkui-core/42-2026-05-30-onnx-true-live.md`**

@@ -2,7 +2,7 @@
 
 > 用途：让你自己跑一遍 · 确认所有本地能力真活。
 > 估计耗时：**首次 30 分钟**（含 cargo 编译）· 二次跑 5 分钟。
-> 适用范围：~92% MVP 能力（不含 ONNX 真语义 embedding · task #87 阻塞）。
+> 适用范围：**100% MVP 能力** ✅ · 含 ONNX 真语义 embedding（task #87 已解锁 · Round 42 端到端真活）。
 
 每步给出**命令** + **期望输出** + **失败时怎么办**。按顺序跑，前一步过了再跑下一步。
 
@@ -56,7 +56,7 @@ make check
 > ```
 >
 > **不在默认里**（需显式 `--features X` 才开）：
-> - `onnx` —— ort 2.0 RC 整链路 broken（task #87）
+> - `onnx` —— Round 42 起已真活 · 但默认不开（binary 多 17MB · 含 ONNX Runtime 静态链接）· 显式 `--features onnx` 启用真语义检索
 > - `lancedb` —— arrow/lance 编译 10+ 分钟 · 用户决定何时承担
 > - `kotlin` / `swift` —— 小众语言 chunker
 >

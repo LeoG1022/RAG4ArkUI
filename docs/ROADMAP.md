@@ -16,7 +16,7 @@
 - **lancedb feature 完整真活**：`--features lancedb` binary 95 MB · 内部 lance KNN+FilteredRead
 - mdBook 文档站 + `docs/RELEASE-NOTES-v1.0.0.md` 草稿就位
 - `corpus pull` + `corpus model-pull` 一键拉默认 corpus + BGE-M3 模型
-- pre-existing 阻塞清单：**仅余 ort 链路**（task #87 · Day 20c blocker）
+- pre-existing 阻塞清单：**全部已解锁** ✅（Round 40-42 收掉 task #87 / Day 20c · ONNX 真语义 BGE-M3 端到端 · Top-1 命中率 mock 3/6 → onnx 6/6）
 - 20 个 STATUS 文档
 - 27 个 git commit / 历史 18 个工作 Day
 
