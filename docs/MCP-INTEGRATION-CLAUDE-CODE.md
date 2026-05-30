@@ -109,15 +109,41 @@ sudo codesign --force --sign - /usr/local/bin/arkui-rag
 
 ---
 
-## Claude Code CLI vs Claude Desktop GUI · 双端配置差异
+## 三端客户端 · 配置差异速查
 
-**重要**：Claude Code (terminal CLI `claude`) 和 Claude Desktop (GUI app) 是**两个独立客户端** · 配置文件不同 · 必须分别配。
+**重要**：本项目支持的 3 个 MCP 客户端各走独立配置文件 · 不互通 · `make install` 会自动配全部三端。
 
-| 客户端 | 启动命令 | 配置文件 | 注册方式 | `command` 字段 |
-|---|---|---|---|---|
-| **Claude Code CLI** | `claude`（来自 `/opt/homebrew/bin/`）| `~/.claude.json` 顶层 `mcpServers` | `claude mcp add ...` | 短名（继承 shell PATH）或绝对路径 |
-| **Claude Desktop GUI** | `/Applications/Claude.app` | `~/Library/Application Support/Claude/claude_desktop_config.json` | 手动编辑 JSON | **必须绝对路径**（launchd 不继承 shell PATH） |
-| ~~`~/.claude/mcp.json`~~ | — | — | **不存在的路径** · Claude Code 不读 · 别建 |
+| 客户端 | 启动命令 | 配置文件 | 注册方式 | 配置节名 | `command` 格式 |
+|---|---|---|---|---|---|
+| **Claude Code CLI** | `claude`（`/opt/homebrew/bin/`）| `~/.claude.json` 顶层 | `claude mcp add ...` | `mcpServers` | 短名或绝对路径 |
+| **Claude Desktop GUI** | `/Applications/Claude.app` | `~/Library/Application Support/Claude/claude_desktop_config.json` | 手动编辑 JSON | `mcpServers` | **必须绝对路径**（launchd 不继承 PATH）|
+| **opencode** | `opencode`（SST · 开源 terminal agent）| `~/.config/opencode/opencode.json` | `opencode mcp add` 或手动编辑 | `mcp` | **数组**：`["binary", "arg1", ...]` |
+| ~~`~/.claude/mcp.json`~~ | — | — | **不存在的路径** · Claude Code 不读 · 别建 | — | — |
+
+### opencode 配置格式差异（注意：跟 Claude 不一样）
+
+```jsonc
+// ~/.config/opencode/opencode.json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {                                          // 顶层节叫 "mcp" 不是 "mcpServers"
+    "arkui-rag": {
+      "type": "local",                              // 必填 · local = stdio
+      "command": [                                  // 数组形式 · 命令 + args 平铺
+        "/Users/me/.local/bin/arkui-rag",
+        "serve", "--mcp",
+        "--index-path", "/Users/me/.arkui-rag/index.json",
+        "--bm25", "tantivy"
+      ],
+      "enabled": true                               // 可选 · 默认 true
+    }
+  }
+}
+```
+
+`make install` 自动合并到现有 `opencode.json`（保留 plugin / 其它 mcp server）· 备份既有 config。
+
+验证：`opencode mcp list` 应显示 `● ✓ arkui-rag connected`。
 
 ### 双端同时跑的前提（Round 36 修复）
 

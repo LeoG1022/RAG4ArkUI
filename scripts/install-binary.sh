@@ -196,6 +196,56 @@ else
     echo "  ⏭  Claude Desktop 未装 · 跳过 GUI 配置"
 fi
 
+# ─── Step 8 · 配 opencode MCP（如果装了）───
+echo ""
+echo "═══ Step 8 · opencode MCP ═══"
+OPENCODE_CONFIG="$HOME/.config/opencode/opencode.json"
+if command -v opencode >/dev/null 2>&1; then
+    if [[ -f "$OPENCODE_CONFIG" ]]; then
+        BACKUP="$OPENCODE_CONFIG.bak.$(date +%Y%m%d-%H%M%S)"
+        cp "$OPENCODE_CONFIG" "$BACKUP"
+
+        python3 - "$OPENCODE_CONFIG" "$DST_BINARY" "$INDEX_PATH" <<'PY'
+import json, sys
+config_path, binary, index_path = sys.argv[1], sys.argv[2], sys.argv[3]
+cfg = json.load(open(config_path))
+cfg.setdefault('mcp', {})['arkui-rag'] = {
+    'type': 'local',
+    'command': [binary, 'serve', '--mcp', '--index-path', index_path, '--bm25', 'tantivy'],
+    'enabled': True,
+}
+json.dump(cfg, open(config_path, 'w'), indent=2, ensure_ascii=False)
+print(f"  ✅ 合并到 {config_path}")
+PY
+        echo "  备份: $BACKUP"
+        echo "  验证（opencode mcp list）:"
+        if opencode mcp list 2>&1 | grep -q "✓ arkui-rag"; then
+            echo "  ✅ arkui-rag connected"
+        else
+            opencode mcp list 2>&1 | sed 's/^/         /'
+        fi
+    elif [[ -d "$HOME/.config/opencode" ]]; then
+        # 目录在 · 文件不在 · 新建
+        cat > "$OPENCODE_CONFIG" <<EOF
+{
+  "\$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "arkui-rag": {
+      "type": "local",
+      "command": ["$DST_BINARY", "serve", "--mcp", "--index-path", "$INDEX_PATH", "--bm25", "tantivy"],
+      "enabled": true
+    }
+  }
+}
+EOF
+        echo "  ✅ 新建 $OPENCODE_CONFIG"
+    else
+        echo "  ⏭  opencode config 目录不存在 · 跳过（用户首次启动 opencode 后会自动创建）"
+    fi
+else
+    echo "  ⏭  opencode 未装 · 跳过"
+fi
+
 # ─── 完成 ───
 cat <<EOF
 
@@ -206,6 +256,8 @@ cat <<EOF
        退出当前 claude 进程（Ctrl-D / /exit）· 重新跑 \`claude\`
   2. 重启 Claude Desktop（如果用 GUI）:
        pkill -i "Claude" && sleep 2 && open -a Claude
-  3. 新 chat 测试：
+  3. 重启 opencode（如果用）:
+       退当前 opencode tui · 重跑 \`opencode\`
+  4. 新 chat 测试：
        「用 arkui_search_docs 检索 @State 双向绑定，top_k=3」
 EOF
