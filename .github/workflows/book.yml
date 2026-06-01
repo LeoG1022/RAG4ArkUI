@@ -35,6 +35,9 @@ concurrency:
 
 env:
   MDBOOK_VERSION: "0.5.3"
+  # Round 44 · 抑制「Node 20 deprecated」warning（6/16/2026 后强制 Node 24）
+  # 等 actions/checkout v5 / upload-artifact v5 等全部稳定后可去掉
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:

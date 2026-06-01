@@ -31,6 +31,8 @@ env:
   CARGO_TERM_COLOR: always
   # 注意：不全局设 RUSTFLAGS=-D warnings —— 会让第三方依赖的 warning 也 fail。
   # 严格 warning 门禁仅在 clippy job 里通过 `-- -D warnings` 启用。
+  # Round 44 · 抑制「Node 20 deprecated」warning（6/16/2026 后强制 Node 24）
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 # 同一分支并发的 CI 取消旧的，节省额度
 concurrency:

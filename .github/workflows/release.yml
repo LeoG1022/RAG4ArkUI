@@ -42,6 +42,8 @@ env:
   CARGO_TERM_COLOR: always
   # 与 docs/RELEASE.md / scripts/release-local.sh 默认保持一致
   FEATURES: "http,mcp,lsp,tantivy,typescript,corpus-pull"
+  # Round 44 · 抑制「Node 20 deprecated」warning（6/16/2026 后强制 Node 24）
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 # 同一 tag 并发的 release 取消旧的
 concurrency:
