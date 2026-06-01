@@ -129,7 +129,7 @@ make release-local-verify
 [3/4] 暂存产物
 [4/4] 打包为 .tar.gz
 ✅ Release artifact 完成
-  产物 : dist/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz (4.x MB)
+  产物 : dist/arkui-rag-v1.0.0-aarch64-apple-darwin.tar.gz (4.x MB)
 ━━━ 解压验证 ━━━
 arkui-rag 0.0.1
 ✅ release tarball 端到端可用
@@ -404,17 +404,17 @@ make book-serve   # 自动开浏览器 http://localhost:3000
 | `mdbook: command not found` | mdbook 没装 | `brew install mdbook` |
 | 端口 7654 占用 | 上次 serve 没退 | `lsof -i :7654` 看占用进程 + kill · 或换 `--addr 127.0.0.1:8765` |
 | MCP/LSP 返回空 | server 立即 EOF 退出（stdin 不挂） | 用 `printf '...' \| arkui-rag serve` 形式 · 不是裸跑 |
-| corpus pull `--url` 默认 404 | GitHub Release `corpus-v0.0.1` 还没推 | 用 `--from-file` 或自定义 `--url` |
+| corpus pull `--url` 默认 404 | GitHub Release `corpus-v1.0.0` 还没推 | 用 `--from-file` 或自定义 `--url` |
 | eval recall=0 | fixture GT chunk_id 不匹配你的 corpus | 是预期 · 改 `corpus/_eval/queries.yaml` 用你 corpus 真有的 chunk_id |
 
 ---
 
 ## 跑完之后
 
-如果全过，把 `dist/arkui-rag-v0.0.1-<TRIPLE>/arkui-rag` 复制到 `/usr/local/bin/` 当真工具用：
+如果全过，把 `dist/arkui-rag-v1.0.0-<TRIPLE>/arkui-rag` 复制到 `/usr/local/bin/` 当真工具用：
 
 ```bash
-sudo cp dist/arkui-rag-v0.0.1-aarch64-apple-darwin/arkui-rag /usr/local/bin/
+sudo cp dist/arkui-rag-v1.0.0-aarch64-apple-darwin/arkui-rag /usr/local/bin/
 arkui-rag --version    # 全局可调
 ```
 

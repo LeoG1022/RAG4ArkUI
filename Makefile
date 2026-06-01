@@ -147,8 +147,8 @@ release-local-verify: release-local
 	@echo ""
 	@echo "━━━ 解压验证 ━━━"
 	@rm -rf /tmp/arkui-rag-release-verify && mkdir -p /tmp/arkui-rag-release-verify
-	@tar -xzf dist/arkui-rag-v0.0.1-$$(rustc -vV | awk '/^host:/ {print $$2}').tar.gz -C /tmp/arkui-rag-release-verify
-	@/tmp/arkui-rag-release-verify/arkui-rag-v0.0.1-$$(rustc -vV | awk '/^host:/ {print $$2}')/arkui-rag --version
+	@tar -xzf dist/arkui-rag-v1.0.0-$$(rustc -vV | awk '/^host:/ {print $$2}').tar.gz -C /tmp/arkui-rag-release-verify
+	@/tmp/arkui-rag-release-verify/arkui-rag-v1.0.0-$$(rustc -vV | awk '/^host:/ {print $$2}')/arkui-rag --version
 	@echo "✅ release tarball 端到端可用"
 
 # Round 37: 一键装到 ~/.local/bin/ + 自动配 Claude CLI / Desktop MCP（不用 sudo · 避开 macOS provenance）

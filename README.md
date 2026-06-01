@@ -13,8 +13,8 @@
 
 ```bash
 # 1. 下载（macOS Apple Silicon 示例 · 其它平台见 docs/RELEASE.md）
-curl -LO https://github.com/LeoG1022/RAG4ArkUI/releases/download/v0.0.1/arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
-tar -xzf arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz && cd arkui-rag-v0.0.1-aarch64-apple-darwin
+curl -LO https://github.com/LeoG1022/RAG4ArkUI/releases/download/v1.0.0/arkui-rag-v1.0.0-aarch64-apple-darwin.tar.gz
+tar -xzf arkui-rag-v1.0.0-aarch64-apple-darwin.tar.gz && cd arkui-rag-v1.0.0-aarch64-apple-darwin
 
 # 2. 投放 corpus（或 ./arkui-rag corpus pull · 见 docs/RELEASE.md）
 mkdir -p ./corpus && cp /your/docs/*.md ./corpus/

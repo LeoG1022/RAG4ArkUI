@@ -28,7 +28,7 @@ make release-local
 产物：
 ```
 dist/
-├── arkui-rag-v0.0.1-<TARGET_TRIPLE>.tar.gz   # 6-8 MB
+├── arkui-rag-v1.0.0-<TARGET_TRIPLE>.tar.gz   # 6-8 MB
 └── SHA256SUMS                                # 校验和
 ```
 
@@ -97,8 +97,8 @@ bash scripts/release-local.sh --features full
 
 ```bash
 # 1. 下载并解压
-tar -xzf arkui-rag-v0.0.1-aarch64-apple-darwin.tar.gz
-cd arkui-rag-v0.0.1-aarch64-apple-darwin
+tar -xzf arkui-rag-v1.0.0-aarch64-apple-darwin.tar.gz
+cd arkui-rag-v1.0.0-aarch64-apple-darwin
 
 # 2. 验证
 ./arkui-rag --version

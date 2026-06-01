@@ -17,7 +17,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.1"
+version = "1.0.0"
 edition = "2021"
 license = "MIT"
 authors = ["RAG4ArkUI Contributors"]
@@ -51,8 +51,10 @@ ndarray = "0.16"
 # ONNX 推理（embedding crate 的 `onnx` feature 启用）
 # Round 40 修：原 load-dynamic 触发 ort 自身 vitis.rs bug（VitisAI 字段在 ortsys 不存在）
 # 改用默认 features（download-binaries 静态链接 ONNX Runtime · binary 大一些但稳定）
+# Round 47: 加 coreml feature · Apple Silicon GPU 加速 · 4s → <500ms 预期
+# coreml 在非 macOS 平台 ort 内部 cfg gate · linux/windows build 应该 OK
 # 详见 docs/concepts/onnx-chain.md
-ort = { version = "2.0.0-rc.12", features = ["ndarray"] }
+ort = { version = "2.0.0-rc.12", features = ["ndarray", "coreml"] }
 tokenizers = { version = "0.20", default-features = false, features = ["onig"] }
 
 # BM25 倒排索引（storage crate 的 tantivy feature 用）
