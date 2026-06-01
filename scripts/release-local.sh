@@ -56,10 +56,12 @@ EOF
 # 解析参数
 FEATURES="$DEFAULT_FEATURES"
 SKIP_BUILD=0
+TARGET=""        # Round 46: 支持 --target 跨编（CI matrix 用）· 空 = host
 while [ $# -gt 0 ]; do
     case "$1" in
         --features) FEATURES="$2"; shift 2 ;;
         --skip-build) SKIP_BUILD=1; shift ;;
+        --target) TARGET="$2"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "${RED}未知参数: $1${NC}" >&2; usage; exit 2 ;;
     esac
@@ -78,11 +80,18 @@ if [ -z "$VERSION" ]; then
     exit 1
 fi
 
-# rustc -vV 输出 host: aarch64-apple-darwin 这种
-TARGET_TRIPLE="$(rustc -vV 2>/dev/null | awk '/^host:/ {print $2}')"
-if [ -z "$TARGET_TRIPLE" ]; then
-    echo "${RED}✗ rustc 未安装或不可执行${NC}" >&2
-    exit 1
+# Round 46: 若指定 --target · 直接用它；否则按 host triple
+if [ -n "$TARGET" ]; then
+    TARGET_TRIPLE="$TARGET"
+    CROSS_COMPILE=1
+else
+    # rustc -vV 输出 host: aarch64-apple-darwin 这种
+    TARGET_TRIPLE="$(rustc -vV 2>/dev/null | awk '/^host:/ {print $2}')"
+    if [ -z "$TARGET_TRIPLE" ]; then
+        echo "${RED}✗ rustc 未安装或不可执行${NC}" >&2
+        exit 1
+    fi
+    CROSS_COMPILE=0
 fi
 
 # 平台后缀（统一用 tar.gz · Win10+ 内置 tar.exe 能解 · 简化 CI matrix）
@@ -103,10 +112,16 @@ echo ""
 
 ARTIFACT_NAME="arkui-rag-v${VERSION}-${TARGET_TRIPLE}"
 
-# 2. 编译（除非 --skip-build）
+# 2. 编译（除非 --skip-build）· Round 46 跨编时加 --target
 if [ "$SKIP_BUILD" -eq 0 ]; then
-    echo "${BOLD}[1/4] cargo build --release --features $FEATURES${NC}"
-    ( cd "$CRATES_DIR" && cargo build --release -p arkui-rag-cli --features "$FEATURES" ) || {
+    BUILD_ARGS=(build --release -p arkui-rag-cli --features "$FEATURES")
+    if [ "$CROSS_COMPILE" -eq 1 ]; then
+        BUILD_ARGS+=(--target "$TARGET_TRIPLE")
+        echo "${BOLD}[1/4] cargo build --release --target $TARGET_TRIPLE --features $FEATURES${NC}"
+    else
+        echo "${BOLD}[1/4] cargo build --release --features $FEATURES${NC}"
+    fi
+    ( cd "$CRATES_DIR" && cargo "${BUILD_ARGS[@]}" ) || {
         echo "${RED}✗ cargo build 失败${NC}" >&2
         exit 1
     }
@@ -114,7 +129,12 @@ else
     echo "${YELLOW}[1/4] 跳过 cargo build（--skip-build）${NC}"
 fi
 
-BIN_PATH="$CRATES_DIR/target/release/arkui-rag${BIN_SUFFIX}"
+# Round 46: 跨编时产物在 target/<TARGET>/release/ · 非跨编在 target/release/
+if [ "$CROSS_COMPILE" -eq 1 ]; then
+    BIN_PATH="$CRATES_DIR/target/$TARGET_TRIPLE/release/arkui-rag${BIN_SUFFIX}"
+else
+    BIN_PATH="$CRATES_DIR/target/release/arkui-rag${BIN_SUFFIX}"
+fi
 if [ ! -f "$BIN_PATH" ]; then
     echo "${RED}✗ 找不到产物: $BIN_PATH${NC}" >&2
     exit 1
@@ -124,12 +144,17 @@ BIN_SIZE="$(du -h "$BIN_PATH" | awk '{print $1}')"
 echo "  ✅ binary: $BIN_PATH ($BIN_SIZE)"
 
 # 3. 烟雾测试：--version
+# Round 46: 跨编时跳过 · binary 跑不动 host 不同架构（如 macos-14 arm64 跑 x86_64 binary）
 echo ""
-echo "${BOLD}[2/4] 烟雾测试 --version${NC}"
-"$BIN_PATH" --version || {
-    echo "${RED}✗ binary 无法跑${NC}" >&2
-    exit 1
-}
+if [ "$CROSS_COMPILE" -eq 1 ]; then
+    echo "${YELLOW}[2/4] 跳过烟雾测试 --version（跨编 host≠target）${NC}"
+else
+    echo "${BOLD}[2/4] 烟雾测试 --version${NC}"
+    "$BIN_PATH" --version || {
+        echo "${RED}✗ binary 无法跑${NC}" >&2
+        exit 1
+    }
+fi
 
 # 4. 暂存 staging 目录
 STAGING="$DIST_DIR/.staging/$ARTIFACT_NAME"

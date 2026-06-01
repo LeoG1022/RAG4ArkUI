@@ -90,7 +90,7 @@ jobs:
 
       - name: Build release artifact
         shell: bash
-        run: bash scripts/release-local.sh --features "$FEATURES"
+        run: bash scripts/release-local.sh --features "$FEATURES" --target "${{ matrix.target }}"
 
       - name: List dist/
         shell: bash
