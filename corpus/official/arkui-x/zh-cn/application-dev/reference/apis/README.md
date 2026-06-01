@@ -1,0 +1,143 @@
+# OpenHarmony接口定义跨平台支持列表
+- 平台桥接
+  - [@arkui-x.bridge (平台桥接)](js-apis-bridge.md)
+- 模块加载
+  - [@arkui-x.ModuleLoader](js-apis-ModuleLoader.md)
+- 平台视图
+  - [@arkui-x.platformview](js-apis-PlatformView.md)
+- Ability框架
+  - Stage模型能力的接口(推荐)
+    - [@ohos.app.ability.abilityLifecycleCallback (AbilityLifecycleCallback)](js-apis-app-ability-abilityLifecycleCallback.md)
+    - [@ohos.app.ability.ApplicationStateChangeCallback (ApplicationStateChangeCallback)](js-apis-app-ability-applicationStateChangeCallback.md)
+    - [@ohos.app.ability.AbilityConstant (AbilityConstant)](js-apis-app-ability-abilityConstant.md)
+    - [@ohos.app.ability.AbilityStage (AbilityStage)](js-apis-app-ability-abilityStage.md)
+    - [@ohos.app.ability.UIAbility (UIAbility)](js-apis-app-ability-uiAbility.md)
+    - [@ohos.app.ability.common (应用上下文Context)](js-apis-app-ability-common.md)
+  - 通用能力的接口(推荐)
+    - [@ohos.app.ability.Configuration (Configuration)](js-apis-app-ability-configuration.md)
+    - [@ohos.app.ability.ConfigurationConstant (ConfigurationConstant)](js-apis-app-ability-configurationConstant.md)
+    - [@ohos.app.ability.Want (Want)](js-apis-app-ability-want.md)
+    - [@ohos.app.ability.errorManager (ErrorManager)](js-apis-app-ability-errorManager.md)
+
+  - 接口依赖的元素及定义
+    - application
+      - [abilityDelegator](js-apis-inner-application-abilityDelegator.md)
+      - [abilityDelegatorArgs](js-apis-inner-application-abilityDelegatorArgs.md)
+      - [abilityMonitor](js-apis-inner-application-abilityMonitor.md)
+      - [AbilityStageContext](js-apis-inner-application-abilityStageContext.md)
+      - [abilityStageMonitor](js-apis-inner-application-abilityStageMonitor.md)
+      - [ApplicationContext](js-apis-inner-application-applicationContext.md)
+      - [BaseContext](js-apis-inner-application-baseContext.md)
+      - [Context](js-apis-inner-application-context.md)
+      - [UIAbilityContext](js-apis-inner-application-uiAbilityContext.md)
+- 包管理
+  - [@ohos.bundle.bundleManager (bundleManager模块)](js-apis-bundleManager.md)
+  - [@ohos.zlib (Zip模块)](js-apis-zlib.md)
+  - bundleManager
+    - [abilityInfo](js-apis-bundleManager-abilityInfo.md)
+    - [applicationInfo](js-apis-bundleManager-applicationInfo.md)
+    - [bundleInfo](js-apis-bundleManager-bundleInfo.md)
+    - [hapModuleInfo](js-apis-bundleManager-hapModuleInfo.md)
+    - [metadata](js-apis-bundleManager-metadata.md)
+- 图形图像
+  - [@ohos.window (窗口)](js-apis-window.md)
+  - [@ohos.display (屏幕属性)](js-apis-display.md)
+  - [@ohos.effectKit (图像效果)](js-apis-effectKit.md)
+  - @ohos.graphics.drawing (绘制模块)<!--js-apis-graphics-drawing-->
+    - [模块描述](arkts-apis-graphics-drawing.md)
+    - [Class (Brush)](arkts-apis-graphics-drawing-Brush.md)
+    - [Class (Canvas)](arkts-apis-graphics-drawing-Canvas.md)
+    - [Class (ClorFilter)](arkts-apis-graphics-drawing-ColorFilter.md)
+    - [Class (Font)](arkts-apis-graphics-drawing-Font.md)
+    - [Class (ImageFilter)](arkts-apis-graphics-drawing-ImageFilter.md)
+    - [Class (Lattice)](arkts-apis-graphics-drawing-Lattice.md)
+    - [Class (MaskFilter)](arkts-apis-graphics-drawing-MaskFilter.md)
+    - [Class (Matrix)](arkts-apis-graphics-drawing-Matrix.md)
+    - [Class (Path)](arkts-apis-graphics-drawing-Path.md)
+    - [Class (PathEffect)](arkts-apis-graphics-drawing-PathEffect.md)
+    - [Class (PathIterator)](arkts-apis-graphics-drawing-PathIterator.md)
+    - [Class (Pen)](arkts-apis-graphics-drawing-Pen.md)
+    - [Class (RectUtils)](arkts-apis-graphics-drawing-RectUtils.md)
+    - [Class (Region)](arkts-apis-graphics-drawing-Region.md)
+    - [Class (RoundRect)](arkts-apis-graphics-drawing-RoundRect.md)
+    - [Class (SamplingOptions)](arkts-apis-graphics-drawing-SamplingOptions.md)
+    - [Class (ShaderEffect)](arkts-apis-graphics-drawing-ShaderEffect.md)
+    - [Class (ShadowLayer)](arkts-apis-graphics-drawing-ShadowLayer.md)
+    - [Class (TextBold)](arkts-apis-graphics-drawing-TextBlob.md)
+    - [Class (Tool)](arkts-apis-graphics-drawing-Tool.md)
+    - [Class (Typeface)](arkts-apis-graphics-drawing-Typeface.md)
+    - [Class (TypefaceArguments)](arkts-apis-graphics-drawing-TypefaceArguments.md)
+    - [Interfaces (其他)](arkts-apis-graphics-drawing-i.md)
+    - [Enums](arkts-apis-graphics-drawing-e.md)
+  - [@ohos.graphics.text (文本模块)](js-apis-graphics-text.md)
+- 媒体
+  - [@ohos.multimedia.image (图片处理)](js-apis-image.md)
+  - [@ohos.multimedia.audio (音频管理)](js-apis-audio.md)
+  - [@ohos.multimedia.media (媒体服务)](js-apis-media.md)
+- 资源管理
+  - [@ohos.i18n (国际化-I18n)](js-apis-i18n.md)
+  - [@ohos.intl (国际化-Intl)](js-apis-intl.md)
+  - [@ohos.resourceManager (资源管理)](js-apis-resource-manager.md)
+- 网络管理
+  - [@ohos.request (上传下载)](js-apis-request.md)
+  - [@ohos.net.webSocket (WebSocket连接)](js-apis-webSocket.md)
+  - [@ohos.net.socket (Socket连接)](js-apis-socket.md)
+  - [@ohos.net.http (数据请求)](js-apis-http.md)
+  - [@ohos.net.connection (网络连接管理)](js-apis-net-connection.md)
+- WiFi管理
+  - [@ohos.wifiManager (WLAN)](js-apis-wlan.md)
+- 基础通信
+  - [@ohos.bluetooth.a2dp ](js-apis-bluetooth-a2dp.md)
+  - [@ohos.bluetooth.access ](js-apis-bluetooth-access.md)
+  - [@ohos.bluetooth.baseProfile ](js-apis-bluetooth-baseProfile.md)
+  - [@ohos.bluetooth.ble ](js-apis-bluetooth-ble.md)
+  - [@ohos.bluetooth.connection ](js-apis-bluetooth-connection.md)
+  - [@ohos.bluetooth.constant ](js-apis-bluetooth-constant.md)
+- 文件管理
+  - [@ohos.file.fs (文件管理)](js-apis-file-fs.md)
+  - [@ohos.file.hash (文件哈希处理)](js-apis-file-hash.md)
+  - [@ohos.file.statvfs (文件系统空间统计)](js-apis-file-statvfs.md)
+  - [@ohos.file.photoAccessHelper (相册管理模块)](js-apis-photoAccessHelper.md)
+  - [@ohos.file.picker(选择器)](js-apis-file-picker.md)
+- 设备管理
+  - [@ohos.deviceInfo (设备信息)](js-apis-device_Info.md)
+- 数据管理
+  - [@ohos.pasteboard (剪贴板)](js-apis-pasteboard.md)
+  - [@ohos.data.dataSharePredicates (数据共享谓词)](js-apis-data-dataSharePredicates.md)
+  - [@ohos.data.preferences (用户首选项)](js-apis-data-preferences.md)
+  - [@ohos.data.relationalStore (关系型数据库)](js-apis-data-relationalStore.md)
+  - [@ohos.data.unifiedDataChannel(标准化数据通路)](js-apis-data-unifiedDataChannel.md)
+  - [@ohos.data.uniformTypeDescriptor (标准化数据定义与描述)](js-apis-data-uniformTypeDescriptor.md)
+  - [@ohos.data.ValuesBucket (数据集)](js-apis-data-valuesBucket.md)
+  - [@ohos.data.distributedKVStore(分布式键值数据库)](js-apis-distributedKVStore.md)
+  - [数据库备份与恢复](data-backup-and-restore.md)
+  - [通过键值型数据库实现数据持久化](data-persistence-by-kv-store.md)
+- 安全
+  - [@ohos.abilityAccessCtrl (程序访问控制管理)](js-apis-abilityAccessCtrl.md)
+  - [@ohos.security.cryptoFramework (加解密算法库框架)](js-apis-cryptoFramework.md)
+  - [@ohos.security.cert(证书算法库框架)](js-apis-cert.md)
+- 系统基础能力
+  - [@ohos.hilog (HiLog日志打印)](js-apis-hilog.md)
+  - [@ohos.hiTraceMeter (性能打点)](js-apis-hitracemeter.md)
+  - [@ohos.web.webview(Webview)](js-apis-webview.md)
+  - [Class (WebResourceHandler)](arkts-apis-webview-WebResourceHandler.md)
+    - [Class (WebSchemeHandler)](arkts-apis-webview-WebSchemeHandler.md)
+    - [Class (WebSchemeHandlerRequest)](arkts-apis-webview-WebSchemeHandlerRequest.md)
+    - [Class (WebSchemeHandlerResponse)](arkts-apis-webview-WebSchemeHandlerResponse.md)
+    - [@ohos.web.netErrorList](arkts-apis-netErrorList.md)
+- 公共事件与通知
+  - [系统公共事件定义](commonEventManager-definitions.md)
+  - [@ohos.commonEventManager (公共事件模块)](js-apis-commonEventManager.md)
+  - [@ohos.notificationManager (NotificationManager模块)](js-apis-notificationManager.md)
+  - application
+    - [EventHub](js-apis-inner-application-eventHub.md)
+- 性能分析服务
+  - [@ohos.hiviewdfx.hiAppEvent (应用事件打点)](js-apis-hiviewdfx-hiappevent.md)
+- 进程线程通信
+  - [@ohos.events.emitter (Emitter)](js-apis-emitter.md)
+- 传感器服务
+  - [@ohos.vibrator(振动)](arkts-apis-vibrator.md)
+- 位置服务
+  - [@ohos.geoLocationManager (位置服务)](arkts-apis-geoLocationManager.md)
+- 其他
+  - [@ohos.systemDateTime (系统时间、时区)](js-apis-date-time.md)

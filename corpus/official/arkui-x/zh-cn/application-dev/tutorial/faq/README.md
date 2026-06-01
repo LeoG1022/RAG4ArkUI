@@ -1,0 +1,63 @@
+# 常见问题与解答
+
+## 前期预研阶段
+
+### 能力检索
+
+- [ArkUI-X当前具备哪些关键竞争力特性](Pre-research-Stage/Pre-faq-12.md)
+- [ArkUI-X SDK中主要包含哪些内容，都是什么作用](Pre-research-Stage/Pre-faq-1.md)
+- [应用是如何借助ArkUI-X实现跨平台编译运行的](Pre-research-Stage/Pre-faq-2.md)
+- [ArkUI-X实现了应用工程上哪些能力的跨平台](Pre-research-Stage/Pre-faq-3.md)
+- [ArkUI-X是否支持应用跨平台和鸿蒙的混合开发](Pre-research-Stage/Pre-faq-4.md)
+- [当前支持跨平台的鸿蒙API以及UI组件属性有哪些](Pre-research-Stage/Pre-faq-5.md)
+
+### 成熟案例参考
+
+- [华为运动健康](Pre-research-Stage/Pre-faq-10.md)
+
+### 环境搭建
+
+- [DevEco Studio环境搭建常见问题](Pre-research-Stage/Pre-faq-6.md)
+- [Ace Tools环境搭建常见问题](Pre-research-Stage/Pre-faq-7.md)
+- [Xcode升级到16以上版本](Pre-research-Stage/Pre-faq-13.md)
+
+### 跨平台改造
+
+- [如何把鸿蒙工程结构改造为跨平台工程结构](Pre-research-Stage/Pre-faq-8.md)
+- [如何分析应用中不支持跨平台API的数量及子系统分布](Pre-research-Stage/Pre-faq-9.md)
+- [现有鸿蒙工程如何使用ArkUI-X向跨平台迁移](Pre-research-Stage/Pre-faq-11.md)
+
+## 实际开发阶段
+
+### 必备技能
+
+- [如何手动替换ArkUI-X SDK](Development-Stage/Dev-faq-1.md)
+- [ArkUI-X SDK Version与API Version映射表](Development-Stage/Dev-faq-12.md)
+- [问题反馈模板](Development-Stage/Dev-faq-3.md)
+
+### 功能开发
+
+- [ArkUI-X如何设置沉浸式效果](Development-Stage/Dev-faq-6.md)
+- [ArkTS通过UIContext获取组件能力，运行态功能不可用](Development-Stage/Dev-faq-7.md)
+- [ArkUI-X和原生侧如何实现相互传参和取参](Development-Stage/Dev-faq-8.md)
+- [如何实现平台差异化(编译态、运行态)](Development-Stage/Dev-faq-9.md)
+- [如何解决部分API不支持跨平台的问题](Development-Stage/Dev-faq-10.md)
+- [ArkUI-X for Android如何设置窗口内导航栏、状态栏属性](Development-Stage/Dev-faq-5.md)
+- [ArkUI-X 如何实现结束输入会话的能力](Development-Stage/Dev-faq-13.md)
+- [ArkUI-X 使用PlatformView报"Only UI component syntax can be written here"错误](Development-Stage/Dev-faq-14.md)
+- [ArkUI-X Android界面在输入法展开收起时出现界面异常](Development-Stage/Dev-faq-15.md)
+- [http请求配置CA证书提示本地SSL证书错误](Development-Stage/Dev-faq-16.md)
+- [ArkUI-X 解决useNormalizedOHMUrl设置为true时Android、iOS应用闪退或白屏](Development-Stage/Dev-faq-17.md)
+- [ArkUI-X 解决平台视图从ArkTS侧向原生侧传值](Development-Stage/Dev-faq-18.md)
+- [ArkUI-X 如何使用非原生系统字体](Development-Stage/Dev-faq-19.md)
+- [ArkUI-X 跨平台本地数据加载示例](Development-Stage/Dev-faq-20.md)
+- [关于 registerJavaScriptProxy使用说明](Development-Stage/Dev-faq-21.md)
+- [ArkUI-X API 20+版本，在原生侧Bridge里调用必须在主线程执行的 API 时，会抛出运行时异常(RuntimeException)](Development-Stage/Dev-faq-22.md)
+- [ArkUI-X iOS如何触发应用前后台切换回调](Development-Stage/Dev-faq-23.md)
+- [ArkUI-X iOS中使用控制器直接添加另一个控制器作为子view后出现白屏](Development-Stage/Dev-faq-24.md)
+- [MacOS 提示“无法打开‘icupkg’，因为无法验证开发者”解决办法](Development-Stage/Dev-faq-25.md)
+- [SDK版本切换 iOS白屏问题分析-symbol not found错误处理](Development-Stage/Dev-faq-26.md)
+
+### 问题自排查
+
+- [稳定性问题自排查](Development-Stage/Dev-faq-11.md)

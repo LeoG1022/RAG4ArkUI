@@ -45,10 +45,23 @@ impl EmbeddingModel {
     /// 加载 BGE-M3 ONNX 模型与对应 tokenizer。
     pub fn load(model_dir: &Path) -> Result<Self> {
         // 1. 初始化 ONNX Runtime
-        // Round 49.5: 支持 ARKUI_RAG_DISABLE_COREML env 禁用 CoreML EP
-        // 用于绕过 ort rc.12 + CoreML + BGE-M3 external data 加载 bug
-        // (cmd_index 进程会 set 这个 env · cmd_query 不 set · 同 binary 两路共用)
-        let disable_coreml = std::env::var("ARKUI_RAG_DISABLE_COREML").is_ok();
+        // Round 49.5 Phase 2: 自动检测 external data 文件 · 跳 CoreML EP
+        // 触发条件：模型目录含 *.onnx_data 文件（BGE-M3 等大模型用 external data 存权重）
+        // 原因：ort rc.12 + CoreML + external data 互不兼容 · CoreML EP 把
+        //       model.onnx 当目录处理 · 找 model.onnx/model.onnx_data 报 "Not a directory"
+        // env 兜底：ARKUI_RAG_DISABLE_COREML=1 也能强制禁用（debug / 用户自定义）
+        let env_disable = std::env::var("ARKUI_RAG_DISABLE_COREML").is_ok();
+        let has_external_data = std::fs::read_dir(model_dir)
+            .map(|rd| {
+                rd.filter_map(|e| e.ok()).any(|e| {
+                    e.file_name()
+                        .to_str()
+                        .map(|n| n.ends_with(".onnx_data") || n.ends_with("_data"))
+                        .unwrap_or(false)
+                })
+            })
+            .unwrap_or(false);
+        let disable_coreml = env_disable || has_external_data;
         let mut providers = Vec::new();
         if !disable_coreml {
             providers.push(CoreMLExecutionProvider::default().build());

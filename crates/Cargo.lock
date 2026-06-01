@@ -128,7 +128,7 @@ dependencies = [
 
 [[package]]
 name = "arkui-rag-chunker"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "arkui-rag-core",
@@ -144,7 +144,7 @@ dependencies = [
 
 [[package]]
 name = "arkui-rag-cli"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "arkui-rag-chunker",
@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "arkui-rag-core"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -178,7 +178,7 @@ dependencies = [
 
 [[package]]
 name = "arkui-rag-embedding"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "arkui-rag-core",
@@ -192,7 +192,7 @@ dependencies = [
 
 [[package]]
 name = "arkui-rag-eval"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "arkui-rag-chunker",
@@ -212,7 +212,7 @@ dependencies = [
 
 [[package]]
 name = "arkui-rag-indexer"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "arkui-rag-chunker",
@@ -230,7 +230,7 @@ dependencies = [
 
 [[package]]
 name = "arkui-rag-retrieval"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "arkui-rag-core",
@@ -244,7 +244,7 @@ dependencies = [
 
 [[package]]
 name = "arkui-rag-server"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "arkui-rag-chunker",
@@ -265,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "arkui-rag-storage"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "arkui-rag-core",

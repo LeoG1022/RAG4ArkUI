@@ -761,13 +761,9 @@ async fn cmd_index(
     if !source.exists() {
         anyhow::bail!("源目录不存在：{}", source.display());
     }
-    // Round 49.5: 强制 build index 时禁用 CoreML EP · 绕开 ort rc.12 + BGE-M3
-    // external data 加载 bug。query 路径不动 · 仍走 CoreML 加速 (Round 47 21x)。
-    // 这里在 tokio runtime 单线程阶段 set env · 安全（不会与其它线程 race）。
-    #[allow(unsafe_code)]
-    unsafe {
-        std::env::set_var("ARKUI_RAG_DISABLE_COREML", "1");
-    }
+    // Round 49.5 Phase 2: onnx.rs/reranker_onnx.rs 已 auto-detect external data
+    // (_data / .onnx_data 文件存在自动跳 CoreML EP)，cmd_index 不再需要硬 set env。
+    // env var ARKUI_RAG_DISABLE_COREML=1 仍可用作 debug 兜底（强制禁用）。
     let (embedder, model_id_used, dim) =
         build_embedder(kind, model_path, model_id, mock_dim).await?;
     let vector_backend = build_vector_new(vector_kind, index_path, &model_id_used, dim).await?;

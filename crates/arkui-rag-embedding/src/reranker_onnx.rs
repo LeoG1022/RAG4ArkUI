@@ -42,8 +42,19 @@ impl RerankerModel {
     ///
     /// 模型目录约定：`<dir>/model.onnx` + `<dir>/tokenizer.json`。
     pub fn load(model_dir: &Path) -> AnyResult<Self> {
-        // Round 49.5: 同 onnx.rs · 支持 ARKUI_RAG_DISABLE_COREML env
-        let disable_coreml = std::env::var("ARKUI_RAG_DISABLE_COREML").is_ok();
+        // Round 49.5 Phase 2: 同 onnx.rs · 自动检测 external data · 跳 CoreML EP
+        let env_disable = std::env::var("ARKUI_RAG_DISABLE_COREML").is_ok();
+        let has_external_data = std::fs::read_dir(model_dir)
+            .map(|rd| {
+                rd.filter_map(|e| e.ok()).any(|e| {
+                    e.file_name()
+                        .to_str()
+                        .map(|n| n.ends_with(".onnx_data") || n.ends_with("_data"))
+                        .unwrap_or(false)
+                })
+            })
+            .unwrap_or(false);
+        let disable_coreml = env_disable || has_external_data;
         let mut providers = Vec::new();
         if !disable_coreml {
             providers.push(CoreMLExecutionProvider::default().build());
