@@ -45,13 +45,24 @@ impl EmbeddingModel {
     /// 加载 BGE-M3 ONNX 模型与对应 tokenizer。
     pub fn load(model_dir: &Path) -> Result<Self> {
         // 1. 初始化 ONNX Runtime
+        // Round 49.5: 支持 ARKUI_RAG_DISABLE_COREML env 禁用 CoreML EP
+        // 用于绕过 ort rc.12 + CoreML + BGE-M3 external data 加载 bug
+        // (cmd_index 进程会 set 这个 env · cmd_query 不 set · 同 binary 两路共用)
+        let disable_coreml = std::env::var("ARKUI_RAG_DISABLE_COREML").is_ok();
+        let mut providers = Vec::new();
+        if !disable_coreml {
+            providers.push(CoreMLExecutionProvider::default().build());
+        }
+        providers.push(CUDAExecutionProvider::default().build());
+        providers.push(
+            CPUExecutionProvider::default()
+                .with_arena_allocator(true)
+                .build(),
+        );
+
         ort::init()
             .with_name("arkui-rag")
-            .with_execution_providers([
-                CoreMLExecutionProvider::default().build(),
-                CUDAExecutionProvider::default().build(),
-                CPUExecutionProvider::default().with_arena_allocator(true).build(),
-            ])
+            .with_execution_providers(providers)
             .commit();  // rc.12: 返回 bool（true=首次初始化生效 · false=已初始化）· 不是 Result
 
         // 2. 加载 ONNX 模型

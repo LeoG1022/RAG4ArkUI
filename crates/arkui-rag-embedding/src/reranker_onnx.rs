@@ -42,13 +42,22 @@ impl RerankerModel {
     ///
     /// 模型目录约定：`<dir>/model.onnx` + `<dir>/tokenizer.json`。
     pub fn load(model_dir: &Path) -> AnyResult<Self> {
+        // Round 49.5: 同 onnx.rs · 支持 ARKUI_RAG_DISABLE_COREML env
+        let disable_coreml = std::env::var("ARKUI_RAG_DISABLE_COREML").is_ok();
+        let mut providers = Vec::new();
+        if !disable_coreml {
+            providers.push(CoreMLExecutionProvider::default().build());
+        }
+        providers.push(CUDAExecutionProvider::default().build());
+        providers.push(
+            CPUExecutionProvider::default()
+                .with_arena_allocator(true)
+                .build(),
+        );
+
         ort::init()
             .with_name("arkui-rag-rerank")
-            .with_execution_providers([
-                CoreMLExecutionProvider::default().build(),
-                CUDAExecutionProvider::default().build(),
-                CPUExecutionProvider::default().with_arena_allocator(true).build(),
-            ])
+            .with_execution_providers(providers)
             .commit();  // rc.12: bool 返回 · 不是 Result
 
         let model_path = model_dir.join("model.onnx");
