@@ -268,11 +268,39 @@ enum CorpusOp {
         #[arg(long, default_value_t = 1)]
         strip_components: usize,
     },
+    /// Round 49.8：拉取预 build 好的 index tarball 到 ~/.arkui-rag/index/
+    ///
+    /// 端用户无需自己跑 `arkui-rag index`（CPU build 3 分钟到 3 小时不等）·
+    /// 直接拉 maintainer 在 CI 上预 build 的索引即可立刻使用。
+    IndexPull {
+        /// embedder id（默认 bge-m3 · 决定 URL 文件名）
+        #[arg(long, default_value = "bge-m3")]
+        embedder: String,
+        /// corpus / index 版本号（默认 v1.0.0 · 与 corpus tarball 同步）
+        #[arg(long, default_value = "v1.0.0")]
+        version: String,
+        /// 自定义 URL · 默认按 embedder + version 路由
+        #[arg(long)]
+        url: Option<String>,
+        /// 目标目录 · 默认 ~/.arkui-rag/index/
+        #[arg(long)]
+        target: Option<PathBuf>,
+        /// 强制覆盖已存在文件
+        #[arg(long)]
+        force: bool,
+        /// 跳过 HTTP 下载 · 从本地 tarball 解压
+        #[arg(long, value_name = "PATH")]
+        from_file: Option<PathBuf>,
+        /// 剥掉路径前 N 段 · 默认 0（index tarball 顶层就是 index.json + bm25/）
+        #[arg(long, default_value_t = 0)]
+        strip_components: usize,
+    },
 }
 
-/// 默认 corpus tarball URL —— 用户可在 release 后替换为真实地址
+/// 默认 corpus tarball URL —— Round 49.8 升级到 v1.0.0 范式
+/// Round 49.6 maintainer CI build 后才真活 · 在此之前用户可 --from-file 本地拉
 const DEFAULT_CORPUS_URL: &str =
-    "https://github.com/LeoG1022/RAG4ArkUI/releases/download/corpus-v0.0.1/arkui-rag-corpus-v0.0.1.tar.gz";
+    "https://github.com/LeoG1022/RAG4ArkUI/releases/download/corpus-v1.0.0/arkui-rag-corpus-v1.0.0.tar.gz";
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -1587,6 +1615,36 @@ async fn corpus_op(op: CorpusOp) -> anyhow::Result<()> {
                 cmd_corpus_pull(&url, &target, force, from_file.as_deref(), strip_components).await
             }
         }
+        CorpusOp::IndexPull {
+            embedder,
+            version,
+            url,
+            target,
+            force,
+            from_file,
+            strip_components,
+        } => {
+            #[cfg(not(feature = "corpus-pull"))]
+            {
+                let _ = (embedder, version, url, target, force, from_file, strip_components);
+                anyhow::bail!(
+                    "corpus index-pull 需要 corpus-pull feature 启用：\n  cargo build --features corpus-pull -p arkui-rag-cli\n  或：cargo build --features full"
+                );
+            }
+            #[cfg(feature = "corpus-pull")]
+            {
+                cmd_corpus_index_pull(
+                    &embedder,
+                    &version,
+                    url.as_deref(),
+                    target.as_deref(),
+                    force,
+                    from_file.as_deref(),
+                    strip_components,
+                )
+                .await
+            }
+        }
     }
 }
 
@@ -1671,6 +1729,101 @@ async fn cmd_corpus_model_pull(
     println!("   arkui-rag index ... --embedder onnx --model-path {}", resolved_target.display());
     println!("   arkui-rag query ... --embedder onnx --model-path {}", resolved_target.display());
     Ok(())
+}
+
+/// Round 49.8：拉取 index tarball 到 ~/.arkui-rag/index/
+#[cfg(feature = "corpus-pull")]
+async fn cmd_corpus_index_pull(
+    embedder: &str,
+    version: &str,
+    url: Option<&str>,
+    target: Option<&Path>,
+    force: bool,
+    from_file: Option<&Path>,
+    strip_components: usize,
+) -> anyhow::Result<()> {
+    use anyhow::Context;
+
+    // 1. URL：--url 优先 · 否则按 embedder + version 路由
+    let resolved_url: String = match url {
+        Some(u) => u.to_string(),
+        None if from_file.is_some() => String::new(),
+        None => default_index_url(embedder, version),
+    };
+
+    // 2. target：--target 优先 · 否则 ~/.arkui-rag/index/
+    let resolved_target: PathBuf = match target {
+        Some(t) => t.to_path_buf(),
+        None => default_index_target()?,
+    };
+
+    tracing::info!(
+        "index-pull: embedder={} version={} target={} url={}",
+        embedder,
+        version,
+        resolved_target.display(),
+        if from_file.is_some() {
+            from_file.unwrap().display().to_string()
+        } else {
+            resolved_url.clone()
+        }
+    );
+
+    // 3. 下 + 解压
+    let stats = download_and_extract(
+        &resolved_url,
+        from_file,
+        &resolved_target,
+        force,
+        strip_components,
+    )
+    .await
+    .with_context(|| {
+        format!(
+            "index-pull 失败: embedder={} version={}",
+            embedder, version
+        )
+    })?;
+
+    println!("✅ index 拉取完成");
+    println!("   embedder : {}", embedder);
+    println!("   version  : {}", version);
+    println!(
+        "   来源     : {}",
+        from_file
+            .map(|p| p.display().to_string())
+            .unwrap_or(resolved_url)
+    );
+    println!("   目标     : {}", resolved_target.display());
+    println!("   大小     : {:.2} MB", stats.bytes_mb);
+    println!("   文件数    : {}", stats.entries_count);
+    println!("   strip    : {} 段", strip_components);
+    println!();
+    println!("下一步：");
+    println!(
+        "   arkui-rag query --text '...' --embedder onnx \\\n      --model-path ~/.arkui-rag/models/{} \\\n      --index-path {}/index.json --bm25 tantivy",
+        embedder,
+        resolved_target.display()
+    );
+    Ok(())
+}
+
+/// embedder + version → 默认 URL 路由
+#[cfg(feature = "corpus-pull")]
+fn default_index_url(embedder: &str, version: &str) -> String {
+    format!(
+        "https://github.com/LeoG1022/RAG4ArkUI/releases/download/corpus-{version}/arkui-rag-index-{embedder}-{version}.tar.gz"
+    )
+}
+
+/// 默认 index 目录：~/.arkui-rag/index/
+#[cfg(feature = "corpus-pull")]
+fn default_index_target() -> anyhow::Result<PathBuf> {
+    use anyhow::Context;
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .context("HOME / USERPROFILE 环境变量都未设置 · 用 --target 显式指定目录")?;
+    Ok(PathBuf::from(home).join(".arkui-rag").join("index"))
 }
 
 /// 已知模型名 → 默认 URL 路由（用户用 --url 可覆盖）
@@ -1777,7 +1930,12 @@ async fn download_and_extract(
             let mut entry = entry_result.context("读取 entry 失败")?;
             let path = entry.path().context("entry path 解析失败")?.into_owned();
             let stripped: std::path::PathBuf = path.components().skip(strip_components).collect();
-            if stripped.as_os_str().is_empty() {
+            // Round 49.8: 跳空路径 + 顶层 "." entry（tar c . 会产生）· 否则 canonicalize 会
+            // 把 target/. parent 算成 target 本身的 parent · path traversal 检查误报
+            if stripped.as_os_str().is_empty()
+                || stripped == std::path::Path::new(".")
+                || stripped == std::path::Path::new("./")
+            {
                 continue;
             }
             let out_path = target_owned.join(&stripped);
