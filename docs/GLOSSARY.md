@@ -18,7 +18,7 @@
 | **真上线** | 代码 + 文档 + release 包都对外可见 | **公开上线 / 发布上线** | "MVP 真上线" → "MVP 发布上线" |
 
 > 深度展开见 [`docs/concepts/`](concepts/README.md)（每个概念一篇）：
-> - [mdBook](concepts/mdbook.md) · [tree-sitter](concepts/tree-sitter.md) · [MVP](concepts/mvp.md) · [ONNX 链路](concepts/onnx-chain.md) · [GitHub Pages 部署](concepts/github-pages-deploy.md)
+> - [mdBook](concepts/mdbook.md) · [tree-sitter](concepts/tree-sitter.md) · [MVP](concepts/mvp.md) · [ONNX 链路](concepts/onnx-chain.md) · [GitHub Pages 部署](concepts/github-pages-deploy.md) · [Corpus 工作流](concepts/corpus-workflow.md)
 
 ## 项目惯用词
 

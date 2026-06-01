@@ -41,3 +41,4 @@
     - [MVP](reference/concepts/mvp.md)
     - [ONNX 链路](reference/concepts/onnx-chain.md)
     - [GitHub Pages 部署](reference/concepts/github-pages-deploy.md)
+    - [Corpus 工作流](reference/concepts/corpus-workflow.md)

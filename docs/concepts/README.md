@@ -19,6 +19,7 @@
 | [MVP](mvp.md) | Minimum Viable Product · 在本项目特指 6 周完成的最小可用版本 |
 | [ONNX 链路](onnx-chain.md) | 把文本经 BGE-M3 ONNX 推理为向量 · RAG 真语义检索的核心 · task #87 决策梳理 |
 | [GitHub Pages 部署](github-pages-deploy.md) | book.yml workflow + actions/deploy-pages · 把 mdBook 站自动推到 `<user>.github.io/<repo>/` |
+| [Corpus 工作流](corpus-workflow.md) | corpus → index → query 三段拆分 · 本地 vs 公共 pull 对比 · 私有 / 公共 / 整套分发三类场景 |
 
 ## Agent 自我约束（硬性规则）
 
