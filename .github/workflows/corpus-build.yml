@@ -1,0 +1,188 @@
+# RAG4ArkUI · Corpus & Index build workflow (Round 49.6)
+#
+# 触发（仅手动 · 避免误推 3+ 小时 build）：
+#   workflow_dispatch + 输入 version / embedder / langs / dry_run
+#
+# 流程：
+#   1. checkout
+#   2. 装 Rust stable + apt 装 rsync
+#   3. cache cargo target / Cargo.lock → 重跑加速
+#   4. cache ~/.arkui-rag/models/bge-m3 → 避免每次重下 2.3GB
+#   5. bash scripts/collect-corpus.sh --src arkui-x --lang $LANGS（Round 51）
+#   6. cargo build --release -p arkui-rag-cli --features tantivy,onnx,corpus-pull
+#   7. corpus model-pull --name bge-m3（cache miss 时才跑）
+#   8. arkui-rag index --source corpus/official --bm25 tantivy（CPU only · 全量约 3.2h）
+#   9. bash scripts/release-corpus.sh 打包 + SHA256SUMS
+#   10. upload-artifact (debug / dry_run 用)
+#   11. dry_run=false 时推 GitHub Release tag corpus-$VERSION
+#
+# 设计：
+#   - Linux x86_64 CPU only · 与 macOS BGE-M3 CoreML auto-detect 等效（都跳 CoreML EP）
+#   - timeout-minutes: 350（5h50m · 留余量 · 3.2h 全量 + cache miss 模型下载 + 上传）
+#   - GNU tar 自带 reproducible options（hash 跨机器稳定）
+#   - 用户消费：`arkui-rag corpus index-pull --version $VERSION`（Round 49.8）
+
+name: Corpus Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "corpus 版本号 · 例 v1.0.0（不含 corpus- 前缀）"
+        required: true
+        type: string
+        default: "v1.0.0"
+      embedder:
+        description: "embedder 名 · 决定 index tarball 文件名"
+        required: true
+        type: string
+        default: "bge-m3"
+      langs:
+        description: "收集语言 · 空格分隔 · zh-cn 单语约 1.5h · zh-cn+en 约 3.2h"
+        required: true
+        type: string
+        default: "zh-cn"
+      dry_run:
+        description: "true=只上传 artifact 不推 release · 测 workflow 用"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write  # 推 Release 需要
+
+env:
+  CARGO_TERM_COLOR: always
+  FEATURES: "tantivy,onnx,corpus-pull"
+  # Round 44 · 抑制 Node 20 deprecated warning
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.version }}
+  cancel-in-progress: false   # 全量 build 太贵 · 不允许中途取消
+
+jobs:
+  build:
+    name: Build corpus + index (${{ inputs.langs }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system deps
+        run: sudo apt-get update && sudo apt-get install -y rsync
+
+      - name: Cache cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            crates/target
+          key: cargo-corpus-${{ runner.os }}-${{ hashFiles('crates/Cargo.lock') }}
+          restore-keys: cargo-corpus-${{ runner.os }}-
+
+      - name: Cache BGE-M3 model (~2.3GB)
+        id: model-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.arkui-rag/models/bge-m3
+          key: bge-m3-onnx-v1
+
+      - name: Collect ArkUI-X official docs
+        run: bash scripts/collect-corpus.sh --src arkui-x --lang "${{ inputs.langs }}"
+
+      - name: Build CLI (release)
+        working-directory: crates
+        run: cargo build --release -p arkui-rag-cli --features $FEATURES
+
+      - name: Show binary version
+        run: ./crates/target/release/arkui-rag --version
+
+      - name: model-pull (cache miss only)
+        if: steps.model-cache.outputs.cache-hit != 'true'
+        run: |
+          ./crates/target/release/arkui-rag corpus model-pull --name bge-m3
+          echo "─ 模型目录 ─"
+          ls -lh ~/.arkui-rag/models/bge-m3/ | head -10
+
+      - name: Prepare dist dir
+        run: mkdir -p /tmp/dist/index
+
+      - name: Build index (long · 3.2h for zh-cn+en)
+        run: |
+          ./crates/target/release/arkui-rag index \
+            --source corpus/official \
+            --embedder onnx \
+            --model-path ~/.arkui-rag/models/bge-m3 \
+            --index-path /tmp/dist/index/index.json \
+            --bm25 tantivy
+          echo "─ index 产物 ─"
+          ls -lh /tmp/dist/index/
+          du -sh /tmp/dist/index/
+
+      - name: Pack tarballs + SHA256SUMS
+        run: |
+          bash scripts/release-corpus.sh \
+            --version "${{ inputs.version }}" \
+            --embedder "${{ inputs.embedder }}" \
+            --index-dir /tmp/dist/index \
+            --corpus-dir corpus/official \
+            --output-dir /tmp/dist
+
+      - name: Upload artifacts (always · debug + dry_run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpus-${{ inputs.version }}
+          path: |
+            /tmp/dist/arkui-rag-corpus-*.tar.gz
+            /tmp/dist/arkui-rag-index-*.tar.gz
+            /tmp/dist/SHA256SUMS
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Create / update GitHub Release
+        if: ${{ inputs.dry_run == false }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: corpus-${{ inputs.version }}
+          name: "Corpus + Index ${{ inputs.version }}"
+          files: |
+            /tmp/dist/arkui-rag-corpus-*.tar.gz
+            /tmp/dist/arkui-rag-index-*.tar.gz
+            /tmp/dist/SHA256SUMS
+          body: |
+            ## Pre-built corpus + index for `arkui-rag corpus index-pull`
+
+            **来源**：ArkUI-X 官方文档（gitcode.com/arkui-x/docs · Apache-2.0）
+            **languages**：${{ inputs.langs }}
+            **embedder**：${{ inputs.embedder }}
+            **build env**：ubuntu-22.04 · Rust stable · CPU only（BGE-M3 + CoreML 不兼容暂 CPU）
+
+            ### 用户拉法
+
+            ```bash
+            arkui-rag corpus model-pull --name ${{ inputs.embedder }}
+            arkui-rag corpus index-pull --version ${{ inputs.version }} --embedder ${{ inputs.embedder }}
+            arkui-rag query --text "..." --embedder onnx \
+                --model-path ~/.arkui-rag/models/${{ inputs.embedder }} \
+                --index-path ~/.arkui-rag/index/index.json --bm25 tantivy
+            ```
+
+            ### 文件校验
+
+            `SHA256SUMS` 在同 release · 验法：
+            ```bash
+            sha256sum -c SHA256SUMS
+            ```
+
+            ### License
+
+            ArkUI-X 官方文档 Apache-2.0 · 本 release 重分发并保留 LICENSE。
+          draft: false
+          prerelease: false
