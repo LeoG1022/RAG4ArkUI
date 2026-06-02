@@ -34,8 +34,7 @@ async fn full_index_then_eval() {
     let vector = Arc::new(InMemoryVectorStore::new("mock-64", 64));
     let bm25 = Arc::new(InMemoryBM25Index);
     let dispatcher = Arc::new(
-        ChunkerDispatcher::new()
-            .register(SourceLang::Markdown, Arc::new(MarkdownChunker::new())),
+        ChunkerDispatcher::new().register(SourceLang::Markdown, Arc::new(MarkdownChunker::new())),
     );
     Indexer::new(dispatcher, embedder.clone(), vector.clone(), bm25.clone())
         .index_directory(&corpus)

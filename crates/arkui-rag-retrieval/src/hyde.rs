@@ -50,15 +50,31 @@ impl MockHydeEnhancer {
 /// 简易意图分类（与 QueryIntent 对齐）。
 fn classify_intent(raw: &str) -> QueryIntent {
     let lower = raw.to_lowercase();
-    if lower.contains("router") || raw.contains("路由") || raw.contains("跳转") || raw.contains("页面") {
+    if lower.contains("router")
+        || raw.contains("路由")
+        || raw.contains("跳转")
+        || raw.contains("页面")
+    {
         QueryIntent::ApiLookup
-    } else if lower.contains("error") || raw.contains("错误") || raw.contains("修复") || raw.contains("失败") {
+    } else if lower.contains("error")
+        || raw.contains("错误")
+        || raw.contains("修复")
+        || raw.contains("失败")
+    {
         QueryIntent::ErrorFix
-    } else if lower.contains("kmp") || lower.contains("android") || lower.contains("ios") || raw.contains("迁移") {
+    } else if lower.contains("kmp")
+        || lower.contains("android")
+        || lower.contains("ios")
+        || raw.contains("迁移")
+    {
         QueryIntent::Migration
     } else if raw.contains("一多") || raw.contains("断点") || lower.contains("adaptive") {
         QueryIntent::Adaptive
-    } else if raw.contains("组件") || lower.contains("component") || raw.contains("列表") || raw.contains("刷新") {
+    } else if raw.contains("组件")
+        || lower.contains("component")
+        || raw.contains("列表")
+        || raw.contains("刷新")
+    {
         QueryIntent::NewComponent
     } else {
         QueryIntent::Generic
@@ -148,7 +164,11 @@ mod tests {
         assert!(q.hyde_doc.is_some());
         let hyde = q.hyde_doc.as_deref().unwrap();
         // ArkTS 风格代码必含的标识符
-        assert!(hyde.contains("@Component"), "hyde 应含 @Component：{}", hyde);
+        assert!(
+            hyde.contains("@Component"),
+            "hyde 应含 @Component：{}",
+            hyde
+        );
         assert!(hyde.contains("build()"), "hyde 应含 build()：{}", hyde);
         // 原 query 应被嵌入注释（便于人工审计）
         assert!(hyde.contains("下拉刷新"));
@@ -180,10 +200,16 @@ mod tests {
     #[tokio::test]
     async fn extracts_code_like_entities() {
         let e = MockHydeEnhancer::new();
-        let q = e.enhance("调用 router.pushUrl 传 RouterOptions 参数").await.unwrap();
+        let q = e
+            .enhance("调用 router.pushUrl 传 RouterOptions 参数")
+            .await
+            .unwrap();
         // 应至少识别出 "router.pushUrl" 和 "RouterOptions"
         assert!(q.entities.iter().any(|x| x.contains("router")));
-        assert!(q.entities.iter().any(|x| x.contains("RouterOptions") || x.contains("Options")));
+        assert!(q
+            .entities
+            .iter()
+            .any(|x| x.contains("RouterOptions") || x.contains("Options")));
     }
 
     #[tokio::test]

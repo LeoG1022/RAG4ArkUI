@@ -85,10 +85,7 @@ mod tests {
 
     #[tokio::test]
     async fn load_missing_model_returns_err() {
-        let r = OnnxReranker::load(
-            Path::new("/nonexistent/path/to/reranker"),
-            "test-reranker",
-        );
+        let r = OnnxReranker::load(Path::new("/nonexistent/path/to/reranker"), "test-reranker");
         assert!(r.is_err());
     }
 

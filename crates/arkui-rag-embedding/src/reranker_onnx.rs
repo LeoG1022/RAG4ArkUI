@@ -14,7 +14,7 @@
 use anyhow::Result as AnyResult;
 use ndarray::Array2;
 use ort::{
-    execution_providers::{CPUExecutionProvider, CoreMLExecutionProvider, CUDAExecutionProvider},
+    execution_providers::{CPUExecutionProvider, CUDAExecutionProvider, CoreMLExecutionProvider},
     session::{builder::GraphOptimizationLevel, Session},
     value::Tensor,
 };
@@ -69,7 +69,7 @@ impl RerankerModel {
         ort::init()
             .with_name("arkui-rag-rerank")
             .with_execution_providers(providers)
-            .commit();  // rc.12: bool 返回 · 不是 Result
+            .commit(); // rc.12: bool 返回 · 不是 Result
 
         let model_path = model_dir.join("model.onnx");
         let session = Session::builder()
@@ -80,7 +80,11 @@ impl RerankerModel {
             .map_err(ort_err("with_intra_threads"))?
             .commit_from_file(&model_path)
             .map_err(|e| {
-                anyhow::anyhow!("加载 Reranker ONNX 模型失败 {}: {}", model_path.display(), e)
+                anyhow::anyhow!(
+                    "加载 Reranker ONNX 模型失败 {}: {}",
+                    model_path.display(),
+                    e
+                )
             })?;
 
         let tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json"))
@@ -127,9 +131,8 @@ impl RerankerModel {
 
         let input_ids_tensor = Tensor::from_array((input_ids_shape, input_ids_data))
             .map_err(ort_err("Tensor::from_array(input_ids)"))?;
-        let attention_mask_tensor =
-            Tensor::from_array((attention_mask_shape, attention_mask_data))
-                .map_err(ort_err("Tensor::from_array(attention_mask)"))?;
+        let attention_mask_tensor = Tensor::from_array((attention_mask_shape, attention_mask_data))
+            .map_err(ort_err("Tensor::from_array(attention_mask)"))?;
 
         // rc.12: Session::run 签名 &mut self · 通过 Mutex 拿可变借用
         let mut session = self
@@ -162,12 +165,7 @@ impl RerankerModel {
                     .map(|i| flat[i * stride + (stride.min(2) - 1)])
                     .collect()
             }
-            _ => {
-                return Err(anyhow::anyhow!(
-                    "Reranker 输出 shape 异常: {:?}",
-                    shape
-                ))
-            }
+            _ => return Err(anyhow::anyhow!("Reranker 输出 shape 异常: {:?}", shape)),
         };
 
         if scores.len() != batch_size {

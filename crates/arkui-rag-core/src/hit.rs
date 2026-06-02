@@ -18,19 +18,14 @@ pub struct Hit {
     pub source: HitSource,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum HitSource {
     Vector,
     Bm25,
+    #[default]
     Hybrid,
     Reranked,
-}
-
-impl Default for HitSource {
-    fn default() -> Self {
-        Self::Hybrid
-    }
 }
 
 /// 给 LLM / UI 用的引用单元。一个 Hit → 一个 Citation。

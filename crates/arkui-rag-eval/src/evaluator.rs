@@ -13,8 +13,7 @@ use std::time::Instant;
 pub fn load_queries(path: &Path) -> Result<Vec<EvalQuery>> {
     let s = std::fs::read_to_string(path)
         .map_err(|e| RagError::Config(format!("读评估集 {} 失败: {}", path.display(), e)))?;
-    serde_yaml::from_str(&s)
-        .map_err(|e| RagError::Config(format!("解析评估集 YAML 失败: {}", e)))
+    serde_yaml::from_str(&s).map_err(|e| RagError::Config(format!("解析评估集 YAML 失败: {}", e)))
 }
 
 pub struct Evaluator {
@@ -117,7 +116,10 @@ impl Evaluator {
         };
         let latency_ms = start.elapsed().as_millis();
 
-        let returned: Vec<String> = hits.iter().map(|h| h.chunk.id.as_str().to_string()).collect();
+        let returned: Vec<String> = hits
+            .iter()
+            .map(|h| h.chunk.id.as_str().to_string())
+            .collect();
         let returned_set: HashSet<&str> = returned.iter().map(|s| s.as_str()).collect();
         let gt_set: HashSet<&str> = q.relevant.iter().map(|s| s.as_str()).collect();
 
@@ -232,7 +234,11 @@ mod tests {
             relevant: vec!["a".into()],
             notes: None,
         }];
-        let s = Evaluator::new(retriever).with_k(3).run(&queries).await.unwrap();
+        let s = Evaluator::new(retriever)
+            .with_k(3)
+            .run(&queries)
+            .await
+            .unwrap();
         // "a" 在 rank 3 → mrr = 1/3 ≈ 0.333
         assert!((s.per_query[0].mrr_at_k - 0.3333).abs() < 0.01);
     }

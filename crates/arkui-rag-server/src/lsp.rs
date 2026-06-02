@@ -67,9 +67,7 @@ pub async fn serve_stdio(state: AppState) -> Result<()> {
 
 /// 读取一条 LSP 消息：先解析 headers (Content-Length)，再读 body。
 /// 返回 Ok(None) 表示 EOF。
-async fn read_message(
-    reader: &mut BufReader<tokio::io::Stdin>,
-) -> std::io::Result<Option<String>> {
+async fn read_message(reader: &mut BufReader<tokio::io::Stdin>) -> std::io::Result<Option<String>> {
     let mut content_length: Option<usize> = None;
     loop {
         let mut header = String::new();
@@ -77,7 +75,7 @@ async fn read_message(
         if n == 0 {
             return Ok(None); // EOF
         }
-        let trimmed = header.trim_end_matches(|c| c == '\r' || c == '\n');
+        let trimmed = header.trim_end_matches(['\r', '\n']);
         if trimmed.is_empty() {
             break;
         }
@@ -103,10 +101,7 @@ async fn read_message(
     Ok(Some(body))
 }
 
-async fn write_message(
-    writer: &mut tokio::io::Stdout,
-    body: &str,
-) -> std::io::Result<()> {
+async fn write_message(writer: &mut tokio::io::Stdout, body: &str) -> std::io::Result<()> {
     let bytes = body.as_bytes();
     let header = format!("Content-Length: {}\r\n\r\n", bytes.len());
     writer.write_all(header.as_bytes()).await?;
@@ -313,7 +308,10 @@ async fn arkui_migrate(
         .get("source_code")
         .and_then(|v| v.as_str())
         .ok_or((-32602, "missing param: source_code".into()))?;
-    let from = params.get("from").and_then(|v| v.as_str()).unwrap_or("unknown");
+    let from = params
+        .get("from")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
     let _ = source_code;
     Ok(json!({
         "status": "stub",
@@ -420,11 +418,15 @@ mod tests {
         assert_eq!(v["result"], Value::Null);
 
         // 之后非 exit method 应被拒
-        let body2 = r#"{"jsonrpc":"2.0","id":4,"method":"arkui-rag/search","params":{"query":"x"}}"#;
+        let body2 =
+            r#"{"jsonrpc":"2.0","id":4,"method":"arkui-rag/search","params":{"query":"x"}}"#;
         let (resp2, exit2) = handle_body(&state, body2, &mut sd).await;
         assert!(!exit2);
         let v2: Value = serde_json::from_str(&resp2.unwrap()).unwrap();
-        assert!(v2["error"]["message"].as_str().unwrap().contains("shutdown"));
+        assert!(v2["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("shutdown"));
 
         // exit notification → is_exit=true
         let body3 = r#"{"jsonrpc":"2.0","method":"exit"}"#;

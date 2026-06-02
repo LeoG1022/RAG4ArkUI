@@ -33,7 +33,11 @@ pub fn rrf_fuse(rankings: Vec<Vec<Hit>>, k: f32) -> Vec<Hit> {
             hit
         })
         .collect();
-    out.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    out.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     out
 }
 
@@ -61,7 +65,7 @@ mod tests {
         let r2 = vec![mk("A", 1.0), mk("C", 0.8)];
         let fused = rrf_fuse(vec![r1, r2], RRF_DEFAULT_K);
         assert_eq!(fused[0].chunk.id.as_str(), "A"); // A 双重命中 → 第 1
-        // B 和 C 都只一路命中且同 rank → 分数相等
+                                                     // B 和 C 都只一路命中且同 rank → 分数相等
         assert!(fused.iter().any(|h| h.chunk.id.as_str() == "B"));
         assert!(fused.iter().any(|h| h.chunk.id.as_str() == "C"));
     }

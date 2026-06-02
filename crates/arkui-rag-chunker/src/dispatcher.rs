@@ -8,16 +8,9 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
+#[derive(Default)]
 pub struct ChunkerDispatcher {
     by_lang: HashMap<SourceLang, Arc<dyn ASTChunker>>,
-}
-
-impl Default for ChunkerDispatcher {
-    fn default() -> Self {
-        Self {
-            by_lang: HashMap::new(),
-        }
-    }
 }
 
 impl ChunkerDispatcher {
@@ -81,10 +74,7 @@ impl ChunkerDispatcher {
     ) -> Result<Vec<Chunk>> {
         match self.by_lang.get(&lang) {
             Some(c) => c.chunk(source_path, content, lang).await,
-            None => Err(RagError::Chunker(format!(
-                "未注册 {:?} chunker",
-                lang
-            ))),
+            None => Err(RagError::Chunker(format!("未注册 {:?} chunker", lang))),
         }
     }
 
@@ -142,9 +132,7 @@ mod tests {
     async fn missing_lang_returns_err() {
         let d = ChunkerDispatcher::new()
             .register(SourceLang::Markdown, Arc::new(MarkdownChunker::new()));
-        let r = d
-            .chunk("a.kt", "fun main(){}", Path::new("a.kt"))
-            .await;
+        let r = d.chunk("a.kt", "fun main(){}", Path::new("a.kt")).await;
         assert!(r.is_err());
         let msg = format!("{}", r.unwrap_err());
         assert!(msg.contains("Kotlin"));

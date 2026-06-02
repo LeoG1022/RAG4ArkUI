@@ -12,7 +12,7 @@
 use anyhow::Result;
 use ndarray::{Array2, Axis};
 use ort::{
-    execution_providers::{CPUExecutionProvider, CoreMLExecutionProvider, CUDAExecutionProvider},
+    execution_providers::{CPUExecutionProvider, CUDAExecutionProvider, CoreMLExecutionProvider},
     session::{builder::GraphOptimizationLevel, Session},
     value::Tensor,
 };
@@ -76,7 +76,7 @@ impl EmbeddingModel {
         ort::init()
             .with_name("arkui-rag")
             .with_execution_providers(providers)
-            .commit();  // rc.12: 返回 bool（true=首次初始化生效 · false=已初始化）· 不是 Result
+            .commit(); // rc.12: 返回 bool（true=首次初始化生效 · false=已初始化）· 不是 Result
 
         // 2. 加载 ONNX 模型
         let model_path = model_dir.join("model.onnx");
@@ -87,9 +87,7 @@ impl EmbeddingModel {
             .with_intra_threads(4)
             .map_err(ort_err("with_intra_threads"))?
             .commit_from_file(&model_path)
-            .map_err(|e| {
-                anyhow::anyhow!("加载 ONNX 模型失败 {}: {}", model_path.display(), e)
-            })?;
+            .map_err(|e| anyhow::anyhow!("加载 ONNX 模型失败 {}: {}", model_path.display(), e))?;
 
         // 3. 加载 tokenizer
         let tokenizer = Tokenizer::from_file(model_dir.join("tokenizer.json"))
@@ -132,9 +130,8 @@ impl EmbeddingModel {
 
         let input_ids_tensor = Tensor::from_array((input_ids_shape, input_ids_data))
             .map_err(ort_err("Tensor::from_array(input_ids)"))?;
-        let attention_mask_tensor =
-            Tensor::from_array((attention_mask_shape, attention_mask_data))
-                .map_err(ort_err("Tensor::from_array(attention_mask)"))?;
+        let attention_mask_tensor = Tensor::from_array((attention_mask_shape, attention_mask_data))
+            .map_err(ort_err("Tensor::from_array(attention_mask)"))?;
 
         // rc.12: ort::inputs! 宏返回 Vec 不是 Result · 去掉宏后 ?
         // rc.12: Session::run 签名 &mut self · 通过 Mutex 拿可变借用
@@ -208,8 +205,7 @@ impl EmbeddingModel {
         hidden: &ndarray::ArrayViewD<f32>,
         mask: &Array2<i64>,
     ) -> Result<Array2<f32>> {
-        let (batch_size, seq_len, dim) =
-            (hidden.shape()[0], hidden.shape()[1], hidden.shape()[2]);
+        let (batch_size, seq_len, dim) = (hidden.shape()[0], hidden.shape()[1], hidden.shape()[2]);
         let mut result = Array2::<f32>::zeros((batch_size, dim));
         for b in 0..batch_size {
             let mut sum_mask = 0.0_f32;

@@ -32,7 +32,14 @@ pub(crate) fn extract_chunks<S: LangStrategy>(
 ) -> Vec<Chunk> {
     let mut chunks = Vec::new();
     let mut scope_stack: Vec<(String, Option<ChunkId>)> = Vec::new();
-    walk(strategy, tree.root_node(), source_path, content, &mut scope_stack, &mut chunks);
+    walk(
+        strategy,
+        tree.root_node(),
+        source_path,
+        content,
+        &mut scope_stack,
+        &mut chunks,
+    );
     chunks
 }
 
@@ -132,6 +139,7 @@ pub(crate) fn name_by_field(node: Node, source: &str) -> Option<String> {
 }
 
 /// 通用 helper：取 node 第一个 identifier 子节点。
+#[allow(dead_code)] // 保留作 helper · 当前 typescript chunker 走自定义路径
 pub(crate) fn name_by_first_identifier(node: Node, source: &str, kinds: &[&str]) -> Option<String> {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {

@@ -73,11 +73,7 @@ impl Indexer {
             let lang = ChunkerDispatcher::detect_lang(&path);
             if matches!(lang, SourceLang::Auto) || !self.dispatcher.has(lang) {
                 stats.skipped += 1;
-                tracing::debug!(
-                    "skip {} (lang={:?}; not registered)",
-                    path.display(),
-                    lang
-                );
+                tracing::debug!("skip {} (lang={:?}; not registered)", path.display(), lang);
                 continue;
             }
 
@@ -185,14 +181,15 @@ mod tests {
         )
         .await
         .unwrap();
-        tokio::fs::write(
-            dir.path().join("b.md"),
-            "# Top\n\n## B1\nbody b1\n",
-        )
-        .await
-        .unwrap();
-        tokio::fs::write(dir.path().join(".gitkeep"), "").await.unwrap();
-        tokio::fs::write(dir.path().join("ignored.kt"), "fun main(){}").await.unwrap();
+        tokio::fs::write(dir.path().join("b.md"), "# Top\n\n## B1\nbody b1\n")
+            .await
+            .unwrap();
+        tokio::fs::write(dir.path().join(".gitkeep"), "")
+            .await
+            .unwrap();
+        tokio::fs::write(dir.path().join("ignored.kt"), "fun main(){}")
+            .await
+            .unwrap();
 
         let embedder = Arc::new(MockEmbedder::new(64));
         let vector = Arc::new(InMemoryVectorStore::new("mock-64", 64));

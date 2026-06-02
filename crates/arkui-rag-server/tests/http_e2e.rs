@@ -33,19 +33,15 @@ async fn build_test_state() -> AppState {
     let vector = Arc::new(InMemoryVectorStore::new("mock-64", 64));
     let bm25 = Arc::new(InMemoryBM25Index);
     let dispatcher = Arc::new(
-        ChunkerDispatcher::new()
-            .register(SourceLang::Markdown, Arc::new(MarkdownChunker::new())),
+        ChunkerDispatcher::new().register(SourceLang::Markdown, Arc::new(MarkdownChunker::new())),
     );
     Indexer::new(dispatcher, embedder.clone(), vector.clone(), bm25.clone())
         .index_directory(&corpus)
         .await
         .unwrap();
 
-    let retriever: Arc<dyn arkui_rag_core::Retriever> = Arc::new(HybridRetriever::new(
-        embedder,
-        vector.clone(),
-        bm25,
-    ));
+    let retriever: Arc<dyn arkui_rag_core::Retriever> =
+        Arc::new(HybridRetriever::new(embedder, vector.clone(), bm25));
 
     AppState {
         retriever,

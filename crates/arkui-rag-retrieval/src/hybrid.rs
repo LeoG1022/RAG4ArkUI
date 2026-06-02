@@ -101,9 +101,8 @@ impl Retriever for HybridRetriever {
             );
         }
         // 故意触发一次类型链：让 RagError 在签名里被引用
-        let _: Result<()> = Ok(()).map_err(|_: std::convert::Infallible| {
-            RagError::Retrieval("unreachable".into())
-        });
+        let _: Result<()> =
+            Ok(()).map_err(|_: std::convert::Infallible| RagError::Retrieval("unreachable".into()));
         Ok(fused)
     }
 }
@@ -180,10 +179,7 @@ mod tests {
 
         let retriever = HybridRetriever::new(embedder, vector, bm25);
         let q = EnhancedQuery::passthrough("content 0");
-        let hits = retriever
-            .retrieve(&q, 3)
-            .await
-            .unwrap();
+        let hits = retriever.retrieve(&q, 3).await.unwrap();
         assert_eq!(hits.len(), 3);
     }
 

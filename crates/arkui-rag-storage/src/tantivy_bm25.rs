@@ -25,7 +25,7 @@ use tantivy::{
     query::{BooleanQuery, Occur, Query, QueryParser, TermQuery},
     schema::{
         Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, FAST, INDEXED, STORED,
-        STRING, TEXT,
+        STRING,
     },
     tokenizer::{LowerCaser, NgramTokenizer, RemoveLongFilter, TextAnalyzer},
     Index, IndexReader, IndexWriter, ReloadPolicy, TantivyDocument, Term,
@@ -82,16 +82,16 @@ impl TantivyBM25Index {
 
         std::fs::create_dir_all(dir)
             .map_err(|e| RagError::Storage(format!("create bm25 dir {}: {}", dir.display(), e)))?;
-        let mmap = MmapDirectory::open(dir).map_err(|e| {
-            RagError::Storage(format!("open bm25 dir {}: {}", dir.display(), e))
-        })?;
+        let mmap = MmapDirectory::open(dir)
+            .map_err(|e| RagError::Storage(format!("open bm25 dir {}: {}", dir.display(), e)))?;
         let index = Index::open_or_create(mmap, schema)
             .map_err(|e| RagError::Storage(format!("open_or_create index: {}", e)))?;
 
         // 注册中文友好的 ngram(2,3) tokenizer
-        let analyzer = TextAnalyzer::builder(NgramTokenizer::new(2, 3, false).map_err(|e| {
-            RagError::Storage(format!("ngram tokenizer init: {}", e))
-        })?)
+        let analyzer = TextAnalyzer::builder(
+            NgramTokenizer::new(2, 3, false)
+                .map_err(|e| RagError::Storage(format!("ngram tokenizer init: {}", e)))?,
+        )
         .filter(RemoveLongFilter::limit(40))
         .filter(LowerCaser)
         .build();
@@ -123,6 +123,11 @@ impl TantivyBM25Index {
     /// 当前已索引的 doc 数。
     pub fn len(&self) -> u64 {
         self.reader.searcher().num_docs()
+    }
+
+    /// 索引是否为空（与 `len` 配套 · 满足 clippy `len_without_is_empty`）。
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -204,7 +209,10 @@ impl BM25Index for TantivyBM25Index {
             let mut doc = TantivyDocument::default();
             doc.add_text(self.fields.id, chunk.id.as_str());
             doc.add_text(self.fields.content, &chunk.content);
-            doc.add_text(self.fields.heading_path, &chunk.metadata.heading_path.join(" / "));
+            doc.add_text(
+                self.fields.heading_path,
+                chunk.metadata.heading_path.join(" / "),
+            );
             doc.add_text(self.fields.source, &chunk.metadata.source);
             for p in &chunk.metadata.platforms {
                 doc.add_text(self.fields.platforms, platform_str(*p));
@@ -212,7 +220,10 @@ impl BM25Index for TantivyBM25Index {
             if let Some(v) = &chunk.metadata.api_version {
                 doc.add_text(self.fields.api_version, v);
             }
-            doc.add_text(self.fields.chunk_type, chunk_type_str(chunk.metadata.r#type));
+            doc.add_text(
+                self.fields.chunk_type,
+                chunk_type_str(chunk.metadata.r#type),
+            );
             for t in &chunk.metadata.tags {
                 doc.add_text(self.fields.tags, t);
             }
@@ -233,12 +244,7 @@ impl BM25Index for TantivyBM25Index {
         Ok(())
     }
 
-    async fn search(
-        &self,
-        query: &str,
-        top_k: usize,
-        filters: &QueryFilters,
-    ) -> Result<Vec<Hit>> {
+    async fn search(&self, query: &str, top_k: usize, filters: &QueryFilters) -> Result<Vec<Hit>> {
         if query.trim().is_empty() {
             return Ok(Vec::new());
         }
@@ -249,8 +255,10 @@ impl BM25Index for TantivyBM25Index {
             .map_err(|e| RagError::Storage(format!("reader reload: {}", e)))?;
         let searcher = self.reader.searcher();
 
-        let mut parser =
-            QueryParser::for_index(&self.index, vec![self.fields.content, self.fields.heading_path]);
+        let mut parser = QueryParser::for_index(
+            &self.index,
+            vec![self.fields.content, self.fields.heading_path],
+        );
         parser.set_conjunction_by_default(); // 多 token 走 AND，提高精度
         let main_q: Box<dyn Query> = match parser.parse_query(query) {
             Ok(q) => q,
@@ -321,9 +329,7 @@ impl BM25Index for TantivyBM25Index {
 
     async fn delete(&self, ids: &[ChunkId]) -> Result<()> {
         let writer = self.writer.as_ref().ok_or_else(|| {
-            RagError::Storage(
-                "TantivyBM25Index 以 open_read_only 模式打开 · delete 不可用".into(),
-            )
+            RagError::Storage("TantivyBM25Index 以 open_read_only 模式打开 · delete 不可用".into())
         })?;
         let mut w = writer.lock().unwrap();
         for id in ids {
@@ -347,8 +353,8 @@ fn first_text(doc: &TantivyDocument, field: Field) -> Option<String> {
 }
 
 fn reconstruct_chunk(doc: &TantivyDocument, fields: &Fields) -> Result<Chunk> {
-    let id = first_text(doc, fields.id)
-        .ok_or_else(|| RagError::Storage("missing id field".into()))?;
+    let id =
+        first_text(doc, fields.id).ok_or_else(|| RagError::Storage("missing id field".into()))?;
     let content = first_text(doc, fields.content)
         .ok_or_else(|| RagError::Storage("missing content field".into()))?;
     let meta_json = first_text(doc, fields.meta_json)
@@ -392,7 +398,10 @@ mod tests {
         bm.upsert(&chunks).await.unwrap();
         assert_eq!(bm.len(), 3);
 
-        let hits = bm.search("下拉刷新", 5, &QueryFilters::default()).await.unwrap();
+        let hits = bm
+            .search("下拉刷新", 5, &QueryFilters::default())
+            .await
+            .unwrap();
         assert!(!hits.is_empty(), "BM25 应能命中 '下拉刷新'");
         assert_eq!(hits[0].chunk.id.as_str(), "a");
         assert!(matches!(hits[0].source, HitSource::Bm25));
@@ -411,7 +420,10 @@ mod tests {
             .unwrap();
 
         // 用旧内容查不到
-        let hits_old = bm.search("original", 5, &QueryFilters::default()).await.unwrap();
+        let hits_old = bm
+            .search("original", 5, &QueryFilters::default())
+            .await
+            .unwrap();
         assert!(
             hits_old.is_empty(),
             "旧 doc 应已被覆盖，期望 0 个命中，实际 {}",
@@ -429,7 +441,9 @@ mod tests {
     async fn delete_works() {
         let dir = tempfile::tempdir().unwrap();
         let bm = TantivyBM25Index::open(dir.path()).unwrap();
-        bm.upsert(&[mk_chunk("a", "removeme", "x.md")]).await.unwrap();
+        bm.upsert(&[mk_chunk("a", "removeme", "x.md")])
+            .await
+            .unwrap();
         assert_eq!(bm.len(), 1);
         bm.delete(&[ChunkId::new("a")]).await.unwrap();
         assert_eq!(bm.len(), 0);
@@ -461,13 +475,16 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let bm = TantivyBM25Index::open(dir.path()).unwrap();
 
-        let mut active = mk_chunk("active", "router pushUrl new page", "a.md");
+        let active = mk_chunk("active", "router pushUrl new page", "a.md");
         let mut old = mk_chunk("old", "router pushUrl new page", "b.md");
         old.metadata.deprecated = true;
 
         bm.upsert(&[active, old]).await.unwrap();
 
-        let hits = bm.search("router", 5, &QueryFilters::default()).await.unwrap();
+        let hits = bm
+            .search("router", 5, &QueryFilters::default())
+            .await
+            .unwrap();
         assert_eq!(hits.len(), 1, "默认应排除 deprecated");
         assert_eq!(hits[0].chunk.id.as_str(), "active");
 
@@ -483,7 +500,9 @@ mod tests {
     async fn empty_query_returns_empty() {
         let dir = tempfile::tempdir().unwrap();
         let bm = TantivyBM25Index::open(dir.path()).unwrap();
-        bm.upsert(&[mk_chunk("a", "content", "a.md")]).await.unwrap();
+        bm.upsert(&[mk_chunk("a", "content", "a.md")])
+            .await
+            .unwrap();
         let hits = bm.search("", 5, &QueryFilters::default()).await.unwrap();
         assert!(hits.is_empty());
     }

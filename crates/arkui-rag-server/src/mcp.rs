@@ -76,11 +76,7 @@ pub async fn handle_line(state: &Arc<AppState>, line: &str) -> Option<String> {
     let req: Value = match serde_json::from_str(line) {
         Ok(v) => v,
         Err(e) => {
-            return Some(error_response(
-                None,
-                -32700,
-                &format!("parse error: {}", e),
-            ));
+            return Some(error_response(None, -32700, &format!("parse error: {}", e)));
         }
     };
     let id = req.get("id").cloned();
@@ -237,10 +233,7 @@ async fn arkui_search(
         .get("query")
         .and_then(|v| v.as_str())
         .ok_or((-32602, "missing argument: query".into()))?;
-    let top_k = args
-        .get("top_k")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(5) as usize;
+    let top_k = args.get("top_k").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
     let expand_parent = args
         .get("expand_parent")
         .and_then(|v| v.as_bool())
@@ -274,7 +267,11 @@ async fn arkui_search(
                 .await
                 .map_err(|e| (-32603, format!("expand_parent: {}", e)))?;
             exp.iter()
-                .map(|e| e.parent.as_ref().map(|p| p.content.chars().take(800).collect::<String>()))
+                .map(|e| {
+                    e.parent
+                        .as_ref()
+                        .map(|p| p.content.chars().take(800).collect::<String>())
+                })
                 .collect()
         } else {
             vec![None; hits.len()]
@@ -342,7 +339,10 @@ async fn arkui_migrate(
         .get("source_code")
         .and_then(|v| v.as_str())
         .ok_or((-32602, "missing argument: source_code".into()))?;
-    let from = args.get("from").and_then(|v| v.as_str()).unwrap_or("unknown");
+    let from = args
+        .get("from")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
 
     // Day 15：检索相关迁移规则，不调 LLM 生成
     let query = format!("{} migration to ArkUI-X: {}", from, source_code);
@@ -354,7 +354,9 @@ async fn arkui_migrate(
         .map_err(|e| (-32603, format!("retrieve: {}", e)))?;
 
     let mut text = format!("# 🔄 迁移建议（{} → ArkUI-X）\n\n", from);
-    text.push_str("**⏳ 当前为 Day 15 stub**：仅返回相关迁移规则。Week 4-5 续接 LLM 调用真生成代码。\n\n");
+    text.push_str(
+        "**⏳ 当前为 Day 15 stub**：仅返回相关迁移规则。Week 4-5 续接 LLM 调用真生成代码。\n\n",
+    );
     text.push_str("## 相关迁移规则\n\n");
     let parents = vec![None; hits.len()];
     text.push_str(&render_hits_as_markdown(&hits, &parents, SearchMode::Code));
@@ -383,7 +385,9 @@ fn arkui_validate(args: &Value) -> std::result::Result<Value, (i32, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arkui_rag_core::{Chunk, ChunkId, ChunkMetadata, ChunkType, HitSource, PassthroughEnhancer, Retriever};
+    use arkui_rag_core::{
+        Chunk, ChunkId, ChunkMetadata, ChunkType, HitSource, PassthroughEnhancer, Retriever,
+    };
     use async_trait::async_trait;
 
     struct StubRetriever;
@@ -477,7 +481,10 @@ mod tests {
         let resp = handle_line(&state, line).await.unwrap();
         let v: Value = serde_json::from_str(&resp).unwrap();
         assert_eq!(v["error"]["code"], -32601);
-        assert!(v["error"]["message"].as_str().unwrap().contains("method not found"));
+        assert!(v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("method not found"));
     }
 
     #[tokio::test]

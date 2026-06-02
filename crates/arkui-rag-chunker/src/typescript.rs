@@ -13,9 +13,7 @@
 #![cfg(feature = "typescript")]
 
 use crate::treesitter_base::{extract_chunks, name_by_field, LangStrategy};
-use arkui_rag_core::{
-    chunker::SourceLang, ASTChunker, Chunk, RagError, Result,
-};
+use arkui_rag_core::{chunker::SourceLang, ASTChunker, Chunk, RagError, Result};
 use async_trait::async_trait;
 use tree_sitter::{Node, Parser};
 
@@ -70,6 +68,7 @@ impl LangStrategy for TsStrategy {
 
 pub struct TypeScriptChunker {
     name: String,
+    #[allow(dead_code)] // 保留 · ChunkerDispatcher 未来 lang 选路时会用
     lang: SourceLang,
 }
 
@@ -211,7 +210,9 @@ enum Color {
 "#;
         let c = TypeScriptChunker::new(SourceLang::ArkTs);
         let chunks = c.chunk("u.ts", ts, SourceLang::ArkTs).await.unwrap();
-        assert!(chunks.iter().any(|ck| ck.content.contains("interface User")));
+        assert!(chunks
+            .iter()
+            .any(|ck| ck.content.contains("interface User")));
         assert!(chunks.iter().any(|ck| ck.content.contains("enum Color")));
     }
 
@@ -247,7 +248,10 @@ function f() { // line 2
 "#;
         let c = TypeScriptChunker::new(SourceLang::ArkTs);
         let chunks = c.chunk("l.ts", ts, SourceLang::ArkTs).await.unwrap();
-        let f = chunks.iter().find(|ck| ck.content.contains("function f")).unwrap();
+        let f = chunks
+            .iter()
+            .find(|ck| ck.content.contains("function f"))
+            .unwrap();
         let (start, end) = f.metadata.line_range.unwrap();
         assert_eq!(start, 2);
         assert!(end >= 4);

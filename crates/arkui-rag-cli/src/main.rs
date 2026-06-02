@@ -349,9 +349,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 anyhow::bail!("必须指定一个协议：--http / --mcp / --lsp");
             }
             if selected > 1 {
-                anyhow::bail!(
-                    "--http / --mcp / --lsp 三者互斥（stdio 协议同进程只能占用一次）"
-                );
+                anyhow::bail!("--http / --mcp / --lsp 三者互斥（stdio 协议同进程只能占用一次）");
             }
             if mcp {
                 cmd_serve_mcp(
@@ -502,8 +500,8 @@ fn build_enhancer(kind: HydeKind) -> (Arc<dyn QueryEnhancer>, &'static str) {
 /// 构造 ChunkerDispatcher（Day 10）。
 /// 默认含 Markdown；启用 typescript feature 自动注册 ArkTS/TS chunker。
 fn build_dispatcher() -> Arc<ChunkerDispatcher> {
-    let mut d = ChunkerDispatcher::new()
-        .register(SourceLang::Markdown, Arc::new(MarkdownChunker::new()));
+    let mut d =
+        ChunkerDispatcher::new().register(SourceLang::Markdown, Arc::new(MarkdownChunker::new()));
 
     #[cfg(feature = "typescript")]
     {
@@ -550,9 +548,8 @@ fn build_onnx(
     model_id: &str,
 ) -> anyhow::Result<(Arc<dyn Embedder>, String, usize)> {
     use arkui_rag_embedding::OnnxEmbedder;
-    let path = model_path.ok_or_else(|| {
-        anyhow::anyhow!("--embedder onnx 必须配 --model-path <模型目录>")
-    })?;
+    let path = model_path
+        .ok_or_else(|| anyhow::anyhow!("--embedder onnx 必须配 --model-path <模型目录>"))?;
     let m = OnnxEmbedder::load(path, model_id)
         .map_err(|e| anyhow::anyhow!("加载 ONNX 模型失败: {}", e))?;
     let id = m.model_id().to_string();
@@ -645,9 +642,9 @@ async fn build_vector_new(
     dim: usize,
 ) -> anyhow::Result<VectorBackend> {
     match kind {
-        VectorKind::Memory => Ok(VectorBackend::Memory(Arc::new(
-            InMemoryVectorStore::new(model_id, dim),
-        ))),
+        VectorKind::Memory => Ok(VectorBackend::Memory(Arc::new(InMemoryVectorStore::new(
+            model_id, dim,
+        )))),
         VectorKind::Lancedb => build_lancedb_new(index_path, model_id, dim).await,
     }
 }
@@ -710,7 +707,10 @@ fn build_bm25(
 }
 
 #[cfg(feature = "tantivy")]
-fn build_tantivy(index_path: &Path, writable: bool) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
+fn build_tantivy(
+    index_path: &Path,
+    writable: bool,
+) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
     use arkui_rag_storage::TantivyBM25Index;
     let dir = bm25_dir_from(index_path);
     let bm = if writable {
@@ -723,7 +723,10 @@ fn build_tantivy(index_path: &Path, writable: bool) -> anyhow::Result<(Arc<dyn B
 }
 
 #[cfg(not(feature = "tantivy"))]
-fn build_tantivy(_index_path: &Path, _writable: bool) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
+fn build_tantivy(
+    _index_path: &Path,
+    _writable: bool,
+) -> anyhow::Result<(Arc<dyn BM25Index>, &'static str)> {
     anyhow::bail!(
         "本二进制未启用 tantivy feature。重新构建：\n\
          \tcargo build -p arkui-rag-cli --features tantivy --release\n\
@@ -754,9 +757,8 @@ fn build_onnx_reranker(
     model_id: &str,
 ) -> anyhow::Result<(Arc<dyn Reranker>, String)> {
     use arkui_rag_embedding::OnnxReranker;
-    let path = model_path.ok_or_else(|| {
-        anyhow::anyhow!("--rerank onnx 必须配 --reranker-model-path <模型目录>")
-    })?;
+    let path = model_path
+        .ok_or_else(|| anyhow::anyhow!("--rerank onnx 必须配 --reranker-model-path <模型目录>"))?;
     let m = OnnxReranker::load(path, model_id)
         .map_err(|e| anyhow::anyhow!("加载 Reranker ONNX 失败: {}", e))?;
     let id = m.model_id().to_string();
@@ -951,7 +953,11 @@ async fn cmd_query(
         bm25_name,
         rerank_name,
         hyde_name,
-        if expand_parent { " · expand-parent=on" } else { "" }
+        if expand_parent {
+            " · expand-parent=on"
+        } else {
+            ""
+        }
     );
     println!();
     for (i, h) in hits.iter().enumerate() {
@@ -973,7 +979,11 @@ async fn cmd_query(
         println!(
             "  preview: {}{}",
             preview,
-            if h.chunk.content.len() > 200 { "…" } else { "" }
+            if h.chunk.content.len() > 200 {
+                "…"
+            } else {
+                ""
+            }
         );
         // Day 11：父 chunk 上下文（如果启用 --expand-parent）
         if let Some(exps) = &expanded {
@@ -990,7 +1000,10 @@ async fn cmd_query(
                 };
                 let parent_prev: String = parent.content.chars().take(200).collect();
                 let parent_prev = parent_prev.replace('\n', " ");
-                println!("  ↳ parent ({} {}): {}", parent_head, parent_lines, parent_prev);
+                println!(
+                    "  ↳ parent ({} {}): {}",
+                    parent_head, parent_lines, parent_prev
+                );
             } else {
                 println!("  ↳ parent: none");
             }
@@ -1039,9 +1052,9 @@ async fn cmd_eval(
 
     // 构造检索流水线（复用 query 路径的逻辑）
     let vector_backend = match vector_kind {
-        VectorKind::Memory => VectorBackend::Memory(Arc::new(
-            InMemoryVectorStore::load_from(index_path).await?,
-        )),
+        VectorKind::Memory => {
+            VectorBackend::Memory(Arc::new(InMemoryVectorStore::load_from(index_path).await?))
+        }
         VectorKind::Lancedb => build_vector_load(vector_kind, index_path, "unknown", 0).await?,
     };
     let dim = vector_backend.dim();
@@ -1107,8 +1120,14 @@ async fn cmd_eval(
     println!();
     println!("✅ 评估完成");
     println!("   total queries  : {}", summary.total_queries);
-    println!("   avg recall@{}   : {:.3}", summary.k, summary.avg_recall_at_k);
-    println!("   avg MRR@{}      : {:.3}", summary.k, summary.avg_mrr_at_k);
+    println!(
+        "   avg recall@{}   : {:.3}",
+        summary.k, summary.avg_recall_at_k
+    );
+    println!(
+        "   avg MRR@{}      : {:.3}",
+        summary.k, summary.avg_mrr_at_k
+    );
     println!("   avg latency    : {:.1} ms", summary.avg_latency_ms);
     println!("   p50 latency    : {:.1} ms", summary.p50_latency_ms);
     println!("   p99 latency    : {:.1} ms", summary.p99_latency_ms);
@@ -1195,10 +1214,12 @@ async fn serve_mcp_impl(
     }
 
     let vector_backend = match vector_kind {
-        VectorKind::Memory => VectorBackend::Memory(Arc::new(
-            InMemoryVectorStore::load_from(index_path).await?,
-        )),
-        VectorKind::Lancedb => build_vector_load(vector_kind, index_path, "unknown", mock_dim).await?,
+        VectorKind::Memory => {
+            VectorBackend::Memory(Arc::new(InMemoryVectorStore::load_from(index_path).await?))
+        }
+        VectorKind::Lancedb => {
+            build_vector_load(vector_kind, index_path, "unknown", mock_dim).await?
+        }
     };
     let dim = vector_backend.dim().max(1);
     let index_model_id = vector_backend.embedder_model_id().to_string();
@@ -1214,8 +1235,11 @@ async fn serve_mcp_impl(
     let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
     let (enhancer, _hyde_name) = build_enhancer(hyde_kind);
 
-    let retriever: Arc<dyn arkui_rag_core::Retriever> =
-        Arc::new(HybridRetriever::new(embedder, vector_backend.as_store(), bm25));
+    let retriever: Arc<dyn arkui_rag_core::Retriever> = Arc::new(HybridRetriever::new(
+        embedder,
+        vector_backend.as_store(),
+        bm25,
+    ));
 
     let metadata_store: Option<Arc<dyn arkui_rag_storage::MetadataStore>> = match &vector_backend {
         VectorBackend::Memory(s) => Some(s.clone()),
@@ -1239,8 +1263,14 @@ async fn serve_mcp_impl(
     eprintln!("🔌 MCP server starting on stdio (JSON-RPC 2.0)");
     eprintln!(
         "   embedder={} · bm25={} · vector={} · rerank={}",
-        state.embedder_model_id, state.bm25_name, state.vector_name,
-        if state.reranker.is_some() { "on" } else { "off" }
+        state.embedder_model_id,
+        state.bm25_name,
+        state.vector_name,
+        if state.reranker.is_some() {
+            "on"
+        } else {
+            "off"
+        }
     );
     eprintln!("   tools: arkui_search_docs · arkui_search_code · arkui_migrate_snippet · arkui_validate_api");
     serve_mcp_stdio(state).await?;
@@ -1329,10 +1359,12 @@ async fn serve_lsp_impl(
     }
 
     let vector_backend = match vector_kind {
-        VectorKind::Memory => VectorBackend::Memory(Arc::new(
-            InMemoryVectorStore::load_from(index_path).await?,
-        )),
-        VectorKind::Lancedb => build_vector_load(vector_kind, index_path, "unknown", mock_dim).await?,
+        VectorKind::Memory => {
+            VectorBackend::Memory(Arc::new(InMemoryVectorStore::load_from(index_path).await?))
+        }
+        VectorKind::Lancedb => {
+            build_vector_load(vector_kind, index_path, "unknown", mock_dim).await?
+        }
     };
     let dim = vector_backend.dim().max(1);
     let index_model_id = vector_backend.embedder_model_id().to_string();
@@ -1348,8 +1380,11 @@ async fn serve_lsp_impl(
     let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
     let (enhancer, _hyde_name) = build_enhancer(hyde_kind);
 
-    let retriever: Arc<dyn arkui_rag_core::Retriever> =
-        Arc::new(HybridRetriever::new(embedder, vector_backend.as_store(), bm25));
+    let retriever: Arc<dyn arkui_rag_core::Retriever> = Arc::new(HybridRetriever::new(
+        embedder,
+        vector_backend.as_store(),
+        bm25,
+    ));
 
     let metadata_store: Option<Arc<dyn arkui_rag_storage::MetadataStore>> = match &vector_backend {
         VectorBackend::Memory(s) => Some(s.clone()),
@@ -1373,8 +1408,14 @@ async fn serve_lsp_impl(
     eprintln!("🔌 LSP server starting on stdio (Content-Length framing · JSON-RPC 2.0)");
     eprintln!(
         "   embedder={} · bm25={} · vector={} · rerank={}",
-        state.embedder_model_id, state.bm25_name, state.vector_name,
-        if state.reranker.is_some() { "on" } else { "off" }
+        state.embedder_model_id,
+        state.bm25_name,
+        state.vector_name,
+        if state.reranker.is_some() {
+            "on"
+        } else {
+            "off"
+        }
     );
     eprintln!("   custom methods: arkui-rag/search · arkui-rag/migrate (stub)");
     eprintln!("   stub capability: textDocument/hover");
@@ -1469,10 +1510,12 @@ async fn serve_http_impl(
 
     // 构造完整流水线（复用 query 路径逻辑）
     let vector_backend = match vector_kind {
-        VectorKind::Memory => VectorBackend::Memory(Arc::new(
-            InMemoryVectorStore::load_from(index_path).await?,
-        )),
-        VectorKind::Lancedb => build_vector_load(vector_kind, index_path, "unknown", mock_dim).await?,
+        VectorKind::Memory => {
+            VectorBackend::Memory(Arc::new(InMemoryVectorStore::load_from(index_path).await?))
+        }
+        VectorKind::Lancedb => {
+            build_vector_load(vector_kind, index_path, "unknown", mock_dim).await?
+        }
     };
     let dim = vector_backend.dim().max(1);
     let index_model_id = vector_backend.embedder_model_id().to_string();
@@ -1488,8 +1531,11 @@ async fn serve_http_impl(
     let reranker_opt = build_reranker(rerank_kind, reranker_model_path, reranker_model_id)?;
     let (enhancer, _hyde_name) = build_enhancer(hyde_kind);
 
-    let retriever: Arc<dyn arkui_rag_core::Retriever> =
-        Arc::new(HybridRetriever::new(embedder, vector_backend.as_store(), bm25));
+    let retriever: Arc<dyn arkui_rag_core::Retriever> = Arc::new(HybridRetriever::new(
+        embedder,
+        vector_backend.as_store(),
+        bm25,
+    ));
 
     let metadata_store: Option<Arc<dyn arkui_rag_storage::MetadataStore>> = match &vector_backend {
         VectorBackend::Memory(s) => Some(s.clone()),
@@ -1509,14 +1555,23 @@ async fn serve_http_impl(
         vector_name: vector_backend.name().to_string(),
     };
 
-    let addr: std::net::SocketAddr = addr_str.parse()
+    let addr: std::net::SocketAddr = addr_str
+        .parse()
         .map_err(|e| anyhow::anyhow!("解析 --addr {} 失败: {}", addr_str, e))?;
     let opts = HttpOptions { addr };
 
     println!("🚀 HTTP server starting on http://{}", addr);
-    println!("   embedder={} · bm25={} · vector={} · rerank={} ",
-        state.embedder_model_id, state.bm25_name, state.vector_name,
-        if state.reranker.is_some() { "on" } else { "off" });
+    println!(
+        "   embedder={} · bm25={} · vector={} · rerank={} ",
+        state.embedder_model_id,
+        state.bm25_name,
+        state.vector_name,
+        if state.reranker.is_some() {
+            "on"
+        } else {
+            "off"
+        }
+    );
     println!("   routes: GET /health · GET /corpus/list · POST /search · POST /index (stub)");
     serve_http(&opts, state).await?;
     Ok(())
@@ -1626,7 +1681,15 @@ async fn corpus_op(op: CorpusOp) -> anyhow::Result<()> {
         } => {
             #[cfg(not(feature = "corpus-pull"))]
             {
-                let _ = (embedder, version, url, target, force, from_file, strip_components);
+                let _ = (
+                    embedder,
+                    version,
+                    url,
+                    target,
+                    force,
+                    from_file,
+                    strip_components,
+                );
                 anyhow::bail!(
                     "corpus index-pull 需要 corpus-pull feature 启用：\n  cargo build --features corpus-pull -p arkui-rag-cli\n  或：cargo build --features full"
                 );
@@ -1658,15 +1721,23 @@ async fn cmd_corpus_pull(
 ) -> anyhow::Result<()> {
     let stats = download_and_extract(url, from_file, target, force, strip_components).await?;
     println!("✅ corpus 拉取完成");
-    println!("   来源     : {}", from_file.map(|p| p.display().to_string()).unwrap_or_else(|| url.to_string()));
+    println!(
+        "   来源     : {}",
+        from_file
+            .map(|p| p.display().to_string())
+            .unwrap_or_else(|| url.to_string())
+    );
     println!("   目标     : {}", target.display());
     println!("   大小     : {:.2} MB", stats.bytes_mb);
     println!("   文件数    : {}", stats.entries_count);
     println!("   strip    : {} 段", strip_components);
     println!();
     println!("下一步：");
-    println!("   arkui-rag index --source {} --index-path {}/index.json --bm25 tantivy",
-        target.display(), target.display());
+    println!(
+        "   arkui-rag index --source {} --index-path {}/index.json --bm25 tantivy",
+        target.display(),
+        target.display()
+    );
     Ok(())
 }
 
@@ -1699,8 +1770,8 @@ async fn cmd_corpus_model_pull(
         "model-pull: name={} target={} url={}",
         name,
         resolved_target.display(),
-        if from_file.is_some() {
-            from_file.unwrap().display().to_string()
+        if let Some(p) = from_file {
+            p.display().to_string()
         } else {
             resolved_url.clone()
         }
@@ -1719,15 +1790,26 @@ async fn cmd_corpus_model_pull(
 
     println!("✅ 模型拉取完成");
     println!("   model    : {}", name);
-    println!("   来源     : {}", from_file.map(|p| p.display().to_string()).unwrap_or(resolved_url));
+    println!(
+        "   来源     : {}",
+        from_file
+            .map(|p| p.display().to_string())
+            .unwrap_or(resolved_url)
+    );
     println!("   目标     : {}", resolved_target.display());
     println!("   大小     : {:.2} MB", stats.bytes_mb);
     println!("   文件数    : {}", stats.entries_count);
     println!("   strip    : {} 段", strip_components);
     println!();
     println!("下一步（用真模型跑 index/query · 需要 onnx feature）：");
-    println!("   arkui-rag index ... --embedder onnx --model-path {}", resolved_target.display());
-    println!("   arkui-rag query ... --embedder onnx --model-path {}", resolved_target.display());
+    println!(
+        "   arkui-rag index ... --embedder onnx --model-path {}",
+        resolved_target.display()
+    );
+    println!(
+        "   arkui-rag query ... --embedder onnx --model-path {}",
+        resolved_target.display()
+    );
     Ok(())
 }
 
@@ -1762,8 +1844,8 @@ async fn cmd_corpus_index_pull(
         embedder,
         version,
         resolved_target.display(),
-        if from_file.is_some() {
-            from_file.unwrap().display().to_string()
+        if let Some(p) = from_file {
+            p.display().to_string()
         } else {
             resolved_url.clone()
         }
@@ -1778,12 +1860,7 @@ async fn cmd_corpus_index_pull(
         strip_components,
     )
     .await
-    .with_context(|| {
-        format!(
-            "index-pull 失败: embedder={} version={}",
-            embedder, version
-        )
-    })?;
+    .with_context(|| format!("index-pull 失败: embedder={} version={}", embedder, version))?;
 
     println!("✅ index 拉取完成");
     println!("   embedder : {}", embedder);
@@ -1850,7 +1927,10 @@ fn default_model_target(name: &str) -> anyhow::Result<PathBuf> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .context("HOME / USERPROFILE 环境变量都未设置 · 用 --target 显式指定目录")?;
-    Ok(PathBuf::from(home).join(".arkui-rag").join("models").join(name))
+    Ok(PathBuf::from(home)
+        .join(".arkui-rag")
+        .join("models")
+        .join(name))
 }
 
 /// 共享：HTTP 下载（或读本地文件）+ tar.gz 解压 + path traversal 安全检查
@@ -1967,5 +2047,8 @@ async fn download_and_extract(
     .await
     .context("spawn_blocking 异常")??;
 
-    Ok(ExtractStats { bytes_mb, entries_count })
+    Ok(ExtractStats {
+        bytes_mb,
+        entries_count,
+    })
 }

@@ -54,11 +54,7 @@ impl LanceVectorStore {
     /// 传 `dim=0` 表示 "load existing"：从已存在 table 的 Arrow schema 推导 dim；
     /// 若 table 不存在则报错（不能从无中生有）。
     /// 传 `dim > 0` 表示 "open or create"：若 table 不存在则用此 dim 建空表。
-    pub async fn open(
-        uri: &str,
-        embedder_model_id: impl Into<String>,
-        dim: usize,
-    ) -> Result<Self> {
+    pub async fn open(uri: &str, embedder_model_id: impl Into<String>, dim: usize) -> Result<Self> {
         let conn = lancedb::connect(uri)
             .execute()
             .await
@@ -74,9 +70,7 @@ impl LanceVectorStore {
                     .await
                     .map_err(|e| RagError::Storage(format!("read table schema: {}", e)))?;
                 let resolved = read_vector_dim_from_schema(&table_schema).ok_or_else(|| {
-                    RagError::Storage(
-                        "已有 lance table 但找不到 vector 字段或 dim 推断失败".into(),
-                    )
+                    RagError::Storage("已有 lance table 但找不到 vector 字段或 dim 推断失败".into())
                 })?;
                 // 若用户传了 dim 且与已有 schema 不一致 → 报错（防错配）
                 if dim != 0 && dim != resolved {
@@ -407,11 +401,7 @@ fn passes_post_filter(chunk: &Chunk, filters: &QueryFilters) -> bool {
         }
     }
     if !filters.tags.is_empty() {
-        let any = chunk
-            .metadata
-            .tags
-            .iter()
-            .any(|t| filters.tags.contains(t));
+        let any = chunk.metadata.tags.iter().any(|t| filters.tags.contains(t));
         if !any {
             return false;
         }
@@ -448,7 +438,11 @@ mod tests {
             .await
             .unwrap();
 
-        let chunks = vec![mk_chunk("a", "ca"), mk_chunk("b", "cb"), mk_chunk("c", "cc")];
+        let chunks = vec![
+            mk_chunk("a", "ca"),
+            mk_chunk("b", "cb"),
+            mk_chunk("c", "cc"),
+        ];
         let embeddings = vec![
             norm(vec![1.0, 0.0, 0.0, 0.0]),
             norm(vec![0.0, 1.0, 0.0, 0.0]),
@@ -493,8 +487,7 @@ mod tests {
     #[tokio::test]
     async fn open_with_dim_zero_no_table_fails() {
         let dir = tempfile::tempdir().unwrap();
-        let r =
-            LanceVectorStore::open(dir.path().to_str().unwrap(), "mock-4", 0).await;
+        let r = LanceVectorStore::open(dir.path().to_str().unwrap(), "mock-4", 0).await;
         assert!(r.is_err(), "空目录 + dim=0 应报错（不能无中生有）");
     }
 
@@ -519,9 +512,7 @@ mod tests {
         let store = LanceVectorStore::open(dir.path().to_str().unwrap(), "mock-4", 4)
             .await
             .unwrap();
-        let r = store
-            .upsert(&[mk_chunk("a", "x")], &[vec![1.0, 0.0]])
-            .await;
+        let r = store.upsert(&[mk_chunk("a", "x")], &[vec![1.0, 0.0]]).await;
         assert!(r.is_err());
     }
 

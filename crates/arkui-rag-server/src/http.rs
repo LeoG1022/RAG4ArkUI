@@ -13,7 +13,9 @@
 
 #![cfg(feature = "http")]
 
-use arkui_rag_core::{Citation, EnhancedQuery, QueryEnhancer, RagError, Reranker, Result, Retriever};
+use arkui_rag_core::{
+    Citation, EnhancedQuery, QueryEnhancer, RagError, Reranker, Result, Retriever,
+};
 use arkui_rag_retrieval::{ContextAssembler, ExpandedHit};
 use arkui_rag_storage::MetadataStore;
 use axum::{
@@ -205,7 +207,11 @@ async fn search(
     let start = Instant::now();
 
     let eq = if req.enhance_query {
-        state.enhancer.enhance(&req.query).await.map_err(HttpError::from)?
+        state
+            .enhancer
+            .enhance(&req.query)
+            .await
+            .map_err(HttpError::from)?
     } else {
         EnhancedQuery::passthrough(req.query.clone())
     };
@@ -229,18 +235,21 @@ async fn search(
     };
 
     // 可选扩展到父
-    let expanded: Option<Vec<ExpandedHit>> =
-        if req.expand_parent {
-            match &state.metadata_store {
-                Some(store) => {
-                    let asm = ContextAssembler::new(store.clone());
-                    Some(asm.expand_to_parent(hits.clone()).await.map_err(HttpError::from)?)
-                }
-                None => None,
+    let expanded: Option<Vec<ExpandedHit>> = if req.expand_parent {
+        match &state.metadata_store {
+            Some(store) => {
+                let asm = ContextAssembler::new(store.clone());
+                Some(
+                    asm.expand_to_parent(hits.clone())
+                        .await
+                        .map_err(HttpError::from)?,
+                )
             }
-        } else {
-            None
-        };
+            None => None,
+        }
+    } else {
+        None
+    };
 
     let hits_dto: Vec<HitDto> = hits
         .iter()

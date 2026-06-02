@@ -82,18 +82,13 @@ pub enum Platform {
     Ios,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ChunkType {
     ApiDoc,
     CodeExample,
     MigrationRule,
     ErrorFix,
+    #[default]
     Generic,
-}
-
-impl Default for ChunkType {
-    fn default() -> Self {
-        Self::Generic
-    }
 }

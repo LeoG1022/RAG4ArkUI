@@ -116,11 +116,7 @@ fn passes_filter(chunk: &Chunk, filters: &QueryFilters) -> bool {
         return false;
     }
     if !filters.tags.is_empty() {
-        let any_match = chunk
-            .metadata
-            .tags
-            .iter()
-            .any(|t| filters.tags.contains(t));
+        let any_match = chunk.metadata.tags.iter().any(|t| filters.tags.contains(t));
         if !any_match {
             return false;
         }
@@ -207,7 +203,10 @@ impl VectorStore for InMemoryVectorStore {
 impl MetadataStore for InMemoryVectorStore {
     async fn get(&self, id: &ChunkId) -> Result<Option<Chunk>> {
         let entries = self.entries.read().unwrap();
-        Ok(entries.iter().find(|e| e.chunk.id == *id).map(|e| e.chunk.clone()))
+        Ok(entries
+            .iter()
+            .find(|e| e.chunk.id == *id)
+            .map(|e| e.chunk.clone()))
     }
 
     async fn parent_of(&self, id: &ChunkId) -> Result<Option<Chunk>> {
@@ -272,7 +271,11 @@ mod tests {
     #[tokio::test]
     async fn upsert_and_search_topk() {
         let store = InMemoryVectorStore::new("mock-4", 4);
-        let chunks = vec![mk_chunk("a", "p.md"), mk_chunk("b", "p.md"), mk_chunk("c", "p.md")];
+        let chunks = vec![
+            mk_chunk("a", "p.md"),
+            mk_chunk("b", "p.md"),
+            mk_chunk("c", "p.md"),
+        ];
         let embeddings = vec![
             // 已 L2 归一
             vec![1.0, 0.0, 0.0, 0.0],
@@ -282,7 +285,7 @@ mod tests {
         store.upsert(&chunks, &embeddings).await.unwrap();
         assert_eq!(store.len().await.unwrap(), 3);
 
-        let q = vec![0.9, 0.1, 0.0, 0.0];
+        let q = [0.9, 0.1, 0.0, 0.0];
         // 归一化
         let norm = (q.iter().map(|x| x * x).sum::<f32>()).sqrt();
         let q: Vec<f32> = q.iter().map(|x| x / norm).collect();
@@ -297,11 +300,11 @@ mod tests {
         let store = InMemoryVectorStore::new("mock-2", 2);
         let c = mk_chunk("a", "p.md");
         store
-            .upsert(&[c.clone()], &[vec![1.0, 0.0]])
+            .upsert(std::slice::from_ref(&c), &[vec![1.0, 0.0]])
             .await
             .unwrap();
         store
-            .upsert(&[c.clone()], &[vec![0.0, 1.0]])
+            .upsert(std::slice::from_ref(&c), &[vec![0.0, 1.0]])
             .await
             .unwrap();
         assert_eq!(store.len().await.unwrap(), 1);

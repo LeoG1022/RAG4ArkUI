@@ -10,8 +10,7 @@ use std::sync::Arc;
 
 fn dispatcher_markdown() -> Arc<ChunkerDispatcher> {
     Arc::new(
-        ChunkerDispatcher::new()
-            .register(SourceLang::Markdown, Arc::new(MarkdownChunker::new())),
+        ChunkerDispatcher::new().register(SourceLang::Markdown, Arc::new(MarkdownChunker::new())),
     )
 }
 
@@ -41,10 +40,19 @@ async fn index_save_load_query_roundtrip() {
     let vector = Arc::new(InMemoryVectorStore::new("mock-64", dim));
     let bm25 = Arc::new(InMemoryBM25Index);
 
-    let indexer = Indexer::new(dispatcher_markdown(), embedder.clone(), vector.clone(), bm25.clone());
+    let indexer = Indexer::new(
+        dispatcher_markdown(),
+        embedder.clone(),
+        vector.clone(),
+        bm25.clone(),
+    );
     let stats = indexer.index_directory(&corpus).await.unwrap();
     assert_eq!(stats.files, 2);
-    assert!(stats.chunks >= 3, "expected ≥3 chunks, got {}", stats.chunks);
+    assert!(
+        stats.chunks >= 3,
+        "expected ≥3 chunks, got {}",
+        stats.chunks
+    );
 
     // 持久化 + 重载（模拟 CLI 跨进程）
     let index_path = dir.path().join("idx.json");
@@ -61,7 +69,8 @@ async fn index_save_load_query_roundtrip() {
     let hits = retriever.retrieve(&q, 3).await.unwrap();
     assert!(!hits.is_empty(), "应有 hits");
     assert_eq!(
-        hits[0].chunk.metadata.source, "list.md",
+        hits[0].chunk.metadata.source,
+        "list.md",
         "Top-1 应来自 list.md，实际：{} hits={:?}",
         hits[0].chunk.metadata.source,
         hits.iter().map(|h| h.chunk.id.as_str()).collect::<Vec<_>>()
@@ -102,10 +111,15 @@ async fn platform_filter_works_end_to_end() {
     let vector = Arc::new(InMemoryVectorStore::new("mock-32", 32));
     let bm25 = Arc::new(InMemoryBM25Index);
 
-    Indexer::new(dispatcher_markdown(), embedder.clone(), vector.clone(), bm25.clone())
-        .index_directory(&corpus)
-        .await
-        .unwrap();
+    Indexer::new(
+        dispatcher_markdown(),
+        embedder.clone(),
+        vector.clone(),
+        bm25.clone(),
+    )
+    .index_directory(&corpus)
+    .await
+    .unwrap();
 
     let retriever = HybridRetriever::new(embedder, vector, bm25);
     let q = EnhancedQuery {

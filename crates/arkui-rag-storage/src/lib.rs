@@ -33,6 +33,10 @@ pub trait VectorStore: Send + Sync {
     async fn delete(&self, ids: &[ChunkId]) -> Result<()>;
     /// 当前已索引的 chunk 数（用于 stats / debug）。
     async fn len(&self) -> Result<usize>;
+    /// 索引是否为空（默认基于 len · 与 clippy `len_without_is_empty` 兼容）。
+    async fn is_empty(&self) -> Result<bool> {
+        Ok(self.len().await? == 0)
+    }
 }
 
 /// BM25 倒排索引后端。Tantivy 适配是 Week 3 backlog；
@@ -40,12 +44,7 @@ pub trait VectorStore: Send + Sync {
 #[async_trait]
 pub trait BM25Index: Send + Sync {
     async fn upsert(&self, chunks: &[Chunk]) -> Result<()>;
-    async fn search(
-        &self,
-        query: &str,
-        top_k: usize,
-        filters: &QueryFilters,
-    ) -> Result<Vec<Hit>>;
+    async fn search(&self, query: &str, top_k: usize, filters: &QueryFilters) -> Result<Vec<Hit>>;
     async fn delete(&self, ids: &[ChunkId]) -> Result<()>;
 }
 

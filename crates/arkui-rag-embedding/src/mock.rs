@@ -30,7 +30,9 @@ impl MockEmbedder {
         let mut state = seed;
         let mut v = Vec::with_capacity(self.dim);
         for _ in 0..self.dim {
-            state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             // 映射到 [-1, 1]
             let f = ((state >> 33) as f32 / u32::MAX as f32) * 2.0 - 1.0;
             v.push(f);

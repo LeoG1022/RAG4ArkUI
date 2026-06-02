@@ -23,9 +23,9 @@ pub trait Embedder: Send + Sync {
     /// 单条编码（默认实现走 batch=1）。
     async fn encode_single(&self, text: &str) -> Result<Vec<f32>> {
         let mut batch = self.encode(&[text]).await?;
-        batch.pop().ok_or_else(|| {
-            crate::error::RagError::Embedding("encode returned empty batch".into())
-        })
+        batch
+            .pop()
+            .ok_or_else(|| crate::error::RagError::Embedding("encode returned empty batch".into()))
     }
 
     /// 向量维度（如 BGE-M3 = 1024）。

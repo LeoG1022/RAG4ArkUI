@@ -102,6 +102,10 @@ mod tests {
             .unwrap();
         assert_eq!(v.len(), emb.dim());
         let norm: f32 = v.iter().map(|x| x * x).sum::<f32>().sqrt();
-        assert!((norm - 1.0).abs() < 1e-4, "L2 归一化应近似 1.0，实际 {}", norm);
+        assert!(
+            (norm - 1.0).abs() < 1e-4,
+            "L2 归一化应近似 1.0，实际 {}",
+            norm
+        );
     }
 }

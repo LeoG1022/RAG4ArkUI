@@ -116,10 +116,7 @@ impl ASTChunker for MarkdownChunker {
                 if is_sentinel {
                     break;
                 }
-                while heading_stack
-                    .last()
-                    .map_or(false, |(lv, _, _)| *lv >= level)
-                {
+                while heading_stack.last().is_some_and(|(lv, _, _)| *lv >= level) {
                     heading_stack.pop();
                 }
                 heading_stack.push((level, title.clone(), None));
@@ -175,7 +172,10 @@ fn split_frontmatter(content: &str) -> Result<(Option<Frontmatter>, &str, u32)> 
     }
     let yaml = yaml_lines.join("\n");
     let fm: Frontmatter = serde_yaml::from_str(&yaml).map_err(|e| {
-        RagError::Chunker(format!("frontmatter YAML 解析失败: {} (yaml: {:?})", e, yaml))
+        RagError::Chunker(format!(
+            "frontmatter YAML 解析失败: {} (yaml: {:?})",
+            e, yaml
+        ))
     })?;
     let body = &content[consumed_chars.min(content.len())..];
     let line_offset = (yaml_lines.len() as u32) + 2; // 两行 `---` + yaml 行数
@@ -240,8 +240,10 @@ impl Frontmatter {
             md.tags = self.tags.clone();
         }
         if let Some(api) = &self.api_name {
-            md.extra
-                .insert("api_name".to_string(), serde_json::Value::String(api.clone()));
+            md.extra.insert(
+                "api_name".to_string(),
+                serde_json::Value::String(api.clone()),
+            );
         }
     }
 }
@@ -290,7 +292,11 @@ mod tests {
         assert_eq!(m.tags, vec!["routing"]);
         // line_range 应该是相对原始文件（含 frontmatter 偏移）
         let (start, _end) = m.line_range.unwrap();
-        assert!(start > 6, "expected start > 6 because frontmatter takes 6 lines, got {}", start);
+        assert!(
+            start > 6,
+            "expected start > 6 because frontmatter takes 6 lines, got {}",
+            start
+        );
     }
 
     #[tokio::test]

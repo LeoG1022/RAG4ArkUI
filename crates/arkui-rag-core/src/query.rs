@@ -7,7 +7,7 @@ use crate::chunk::Platform;
 use serde::{Deserialize, Serialize};
 
 /// 查询意图（由 Query Router 给出）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryIntent {
     /// 新建组件 / 写代码
@@ -23,13 +23,8 @@ pub enum QueryIntent {
     /// 闲聊 / 不需要 RAG
     Chitchat,
     /// 未分类（默认走完整 hybrid）
+    #[default]
     Generic,
-}
-
-impl Default for QueryIntent {
-    fn default() -> Self {
-        Self::Generic
-    }
 }
 
 /// 查询过滤条件（用于元数据预过滤，§4.2 决策 6）。

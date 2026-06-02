@@ -13,8 +13,15 @@ pub fn render_markdown(summary: &EvalSummary, run_at: &str) -> String {
     let _ = writeln!(out, "- **评估集**: `{}`", summary.config.queries_path);
     let _ = writeln!(out, "- **索引**: `{}`", summary.config.index_path);
     let _ = writeln!(out, "- **k**: {}", summary.k);
-    let _ = writeln!(out, "- **配置**: embedder=`{}` · bm25=`{}` · rerank=`{}` · hyde=`{}` · pre_rerank_k=`{}`",
-        summary.config.embedder, summary.config.bm25, summary.config.rerank, summary.config.hyde, summary.config.pre_rerank_k);
+    let _ = writeln!(
+        out,
+        "- **配置**: embedder=`{}` · bm25=`{}` · rerank=`{}` · hyde=`{}` · pre_rerank_k=`{}`",
+        summary.config.embedder,
+        summary.config.bm25,
+        summary.config.rerank,
+        summary.config.hyde,
+        summary.config.pre_rerank_k
+    );
     let _ = writeln!(out);
 
     let _ = writeln!(out, "## 整体指标");
@@ -22,8 +29,16 @@ pub fn render_markdown(summary: &EvalSummary, run_at: &str) -> String {
     let _ = writeln!(out, "| 指标 | 值 |");
     let _ = writeln!(out, "|---|---|");
     let _ = writeln!(out, "| 总 query 数 | {} |", summary.total_queries);
-    let _ = writeln!(out, "| **平均 recall@{}** | **{:.3}** |", summary.k, summary.avg_recall_at_k);
-    let _ = writeln!(out, "| **平均 MRR@{}** | **{:.3}** |", summary.k, summary.avg_mrr_at_k);
+    let _ = writeln!(
+        out,
+        "| **平均 recall@{}** | **{:.3}** |",
+        summary.k, summary.avg_recall_at_k
+    );
+    let _ = writeln!(
+        out,
+        "| **平均 MRR@{}** | **{:.3}** |",
+        summary.k, summary.avg_mrr_at_k
+    );
     let _ = writeln!(out, "| 平均延迟 | {:.1} ms |", summary.avg_latency_ms);
     let _ = writeln!(out, "| p50 延迟 | {:.1} ms |", summary.p50_latency_ms);
     let _ = writeln!(out, "| p99 延迟 | {:.1} ms |", summary.p99_latency_ms);
@@ -31,7 +46,11 @@ pub fn render_markdown(summary: &EvalSummary, run_at: &str) -> String {
 
     let _ = writeln!(out, "## 每 query 详情");
     let _ = writeln!(out);
-    let _ = writeln!(out, "| id | query | recall@{} | MRR@{} | latency | 命中 GT | 漏命中 |", summary.k, summary.k);
+    let _ = writeln!(
+        out,
+        "| id | query | recall@{} | MRR@{} | latency | 命中 GT | 漏命中 |",
+        summary.k, summary.k
+    );
     let _ = writeln!(out, "|---|---|---|---|---|---|---|");
     for r in &summary.per_query {
         let q_short = if r.query_text.chars().count() > 40 {
@@ -41,7 +60,11 @@ pub fn render_markdown(summary: &EvalSummary, run_at: &str) -> String {
             r.query_text.clone()
         };
         let q_short = q_short.replace('|', "\\|");
-        let hit = r.returned.iter().filter(|id| !r.missed.contains(id)).count();
+        let hit = r
+            .returned
+            .iter()
+            .filter(|id| !r.missed.contains(id))
+            .count();
         let missed_short = if r.missed.is_empty() {
             "—".to_string()
         } else {
@@ -74,10 +97,19 @@ pub fn render_markdown(summary: &EvalSummary, run_at: &str) -> String {
         .filter(|r| r.recall_at_k < 1.0)
         .collect();
     if failed.is_empty() {
-        let _ = writeln!(out, "无 —— 全部 query 在 top-{} 内召回了所有 ground truth。", summary.k);
+        let _ = writeln!(
+            out,
+            "无 —— 全部 query 在 top-{} 内召回了所有 ground truth。",
+            summary.k
+        );
     } else {
         for r in failed {
-            let _ = writeln!(out, "### {} · {}", r.query_id, r.query_text.replace('\n', " "));
+            let _ = writeln!(
+                out,
+                "### {} · {}",
+                r.query_id,
+                r.query_text.replace('\n', " ")
+            );
             let _ = writeln!(out);
             let _ = writeln!(out, "- **recall@{}**: {:.3}", summary.k, r.recall_at_k);
             let _ = writeln!(out, "- **MRR@{}**: {:.3}", summary.k, r.mrr_at_k);
@@ -91,7 +123,15 @@ pub fn render_markdown(summary: &EvalSummary, run_at: &str) -> String {
                 let _ = writeln!(out, "  - [{}]{}`{}`", rank + 1, marker, id);
             }
             if !r.missed.is_empty() {
-                let _ = writeln!(out, "- **漏命中 GT**: {}", r.missed.iter().map(|s| format!("`{}`", s)).collect::<Vec<_>>().join(", "));
+                let _ = writeln!(
+                    out,
+                    "- **漏命中 GT**: {}",
+                    r.missed
+                        .iter()
+                        .map(|s| format!("`{}`", s))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
             }
             let _ = writeln!(out);
         }

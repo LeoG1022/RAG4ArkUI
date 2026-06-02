@@ -27,12 +27,8 @@ pub enum SourceLang {
 #[async_trait]
 pub trait ASTChunker: Send + Sync {
     /// 切分内容。`source_path` 是相对 corpus/ 根的路径（写入元数据）。
-    async fn chunk(
-        &self,
-        source_path: &str,
-        content: &str,
-        lang: SourceLang,
-    ) -> Result<Vec<Chunk>>;
+    async fn chunk(&self, source_path: &str, content: &str, lang: SourceLang)
+        -> Result<Vec<Chunk>>;
 
     /// 切分器名。
     fn name(&self) -> &str;
