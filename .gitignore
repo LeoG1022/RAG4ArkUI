@@ -52,5 +52,10 @@ Cargo.lock.bak
 *.lance
 *.tantivy
 
+# Round 49.7: OpenHarmony corpus 109MB · 太大不入 git
+# maintainer 跑 `bash scripts/collect-corpus.sh --src openharmony` 本地获取
+# CI workflow corpus-build.yml 也会自己拉
+/corpus/official/openharmony/
+
 # mdBook 文档站构建产物（Day 22 · 由 GitHub Actions 推 gh-pages）
 /mdbook/book/
