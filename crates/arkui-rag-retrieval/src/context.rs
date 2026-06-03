@@ -131,6 +131,8 @@ mod tests {
             chunk,
             score: 1.0,
             source: HitSource::Vector,
+            vector_score: None,
+            bm25_score: None,
         }
     }
 

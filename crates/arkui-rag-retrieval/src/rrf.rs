@@ -19,9 +19,21 @@ pub fn rrf_fuse(rankings: Vec<Vec<Hit>>, k: f32) -> Vec<Hit> {
             let rank_f = (rank + 1) as f32;
             let contrib = 1.0 / (k + rank_f);
             let key = hit.chunk.id.as_str().to_string();
+            // Round 52: 把 Copy 字段提前取出 · 防止 hit move 后 closure 借不到
+            let new_vec_score = hit.vector_score;
+            let new_bm25_score = hit.bm25_score;
             accum
                 .entry(key)
-                .and_modify(|(s, _)| *s += contrib)
+                .and_modify(|(s, existing)| {
+                    *s += contrib;
+                    // 合并：保留任一路径已有的非 None raw score
+                    if existing.vector_score.is_none() && new_vec_score.is_some() {
+                        existing.vector_score = new_vec_score;
+                    }
+                    if existing.bm25_score.is_none() && new_bm25_score.is_some() {
+                        existing.bm25_score = new_bm25_score;
+                    }
+                })
                 .or_insert_with(|| (contrib, hit));
         }
     }
@@ -55,6 +67,8 @@ mod tests {
             },
             score,
             source: Default::default(),
+            vector_score: None,
+            bm25_score: None,
         }
     }
 

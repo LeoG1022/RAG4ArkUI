@@ -198,6 +198,8 @@ impl LanceVectorStore {
                     },
                     score,
                     source: HitSource::Vector,
+                    vector_score: None,
+                    bm25_score: None,
                 });
             }
         }

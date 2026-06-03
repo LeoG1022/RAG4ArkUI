@@ -72,7 +72,7 @@ impl Retriever for HybridRetriever {
         let bm_fut = self
             .bm25
             .search(&query.rewritten, self.per_branch_topk, &query.filters);
-        let (vec_hits, bm_hits) = tokio::try_join!(vec_fut, bm_fut)?;
+        let (mut vec_hits, mut bm_hits) = tokio::try_join!(vec_fut, bm_fut)?;
 
         let vec_count = vec_hits.len();
         let bm_count = bm_hits.len();
@@ -81,6 +81,15 @@ impl Retriever for HybridRetriever {
             vec_count,
             bm_count
         );
+
+        // Round 52: fuse 前保留每路原始 score 到 vector_score / bm25_score
+        // RRF 会覆盖 hit.score · 但 vector_score / bm25_score 保留 raw 值用于阈值过滤 + 展示
+        for h in vec_hits.iter_mut() {
+            h.vector_score = Some(h.score);
+        }
+        for h in bm_hits.iter_mut() {
+            h.bm25_score = Some(h.score);
+        }
 
         // 3. RRF 融合
         let mut fused = rrf_fuse(vec![vec_hits, bm_hits], self.rrf_k);

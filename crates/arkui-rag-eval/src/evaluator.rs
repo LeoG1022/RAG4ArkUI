@@ -185,6 +185,8 @@ mod tests {
                     },
                     score: 1.0 - 0.1 * rank as f32,
                     source: HitSource::Hybrid,
+                    vector_score: None,
+                    bm25_score: None,
                 })
                 .collect())
         }

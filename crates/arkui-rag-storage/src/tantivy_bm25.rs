@@ -322,6 +322,8 @@ impl BM25Index for TantivyBM25Index {
                 chunk,
                 score,
                 source: HitSource::Bm25,
+                vector_score: None,
+                bm25_score: None,
             });
         }
         Ok(hits)

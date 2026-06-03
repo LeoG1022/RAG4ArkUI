@@ -184,6 +184,8 @@ impl VectorStore for InMemoryVectorStore {
                 chunk: e.chunk.clone(),
                 score: s,
                 source: HitSource::Vector,
+                vector_score: None,
+                bm25_score: None,
             })
             .collect())
     }

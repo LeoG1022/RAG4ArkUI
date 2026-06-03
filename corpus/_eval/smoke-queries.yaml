@@ -1,0 +1,81 @@
+# 本地 RAG smoke 评估集 · 覆盖 ArkUI-X 入门/概念/进阶/多端典型场景
+# 不要 ground truth chunk_id（query-only · 人工看 top-K 合理性）
+#
+# 设计原则:
+#   1. quick-start 覆盖：能命中现成 130 chunks 索引
+#   2. 进阶问题：故意问 quick-start 范围外（看 RAG 召回边界）
+#   3. 多端：Android / iOS 适配
+#   4. 概念：ArkTS / 状态管理 / 双向绑定
+#   5. 工具链：DevEco / ace tools
+#   6. 负样本：完全无关的问题
+
+queries:
+  # ── A. 入门（应高命中 · quick-start 覆盖）──
+  - id: a1
+    query: "ArkUI-X 怎么创建第一个应用"
+    expect: "应命中 start-overview / start-with-ets-stage"
+
+  - id: a2
+    query: "什么是 ArkUI-X · 和 ArkUI 有什么区别"
+    expect: "应命中 ArkUI-X-Overview / README"
+
+  - id: a3
+    query: "DevEco Studio 怎么装 ArkUI-X 插件"
+    expect: "应命中 start-with-deveco-studio / start-with-dev-environment"
+
+  - id: a4
+    query: "ace tools 命令行工具用法"
+    expect: "应命中 start-with-ace-tools"
+
+  # ── B. 工程结构 ──
+  - id: b1
+    query: "ArkUI-X 项目目录结构"
+    expect: "应命中 package-structure-guide / sdk-structure-guide"
+
+  - id: b2
+    query: "Stage 模型 ability 是什么"
+    expect: "应命中 start-with-ets-stage / start-with-ability-on-android"
+
+  # ── C. 多端适配（Android / iOS）──
+  - id: c1
+    query: "怎么在 Android 上跑 ArkUI-X 应用"
+    expect: "应命中 start-with-ability-on-android"
+
+  - id: c2
+    query: "ArkUI-X iOS 端怎么集成"
+    expect: "应命中 start-with-ability-on-ios"
+
+  - id: c3
+    query: "ArkUI-X 不同平台行为差异"
+    expect: "应命中 platform-different-introduction"
+
+  # ── D. 进阶（可能超出 quick-start · 看召回边界）──
+  - id: d1
+    query: "platform bridge 怎么用 · 怎么调原生接口"
+    expect: "应命中 platform-bridge-introduction"
+
+  - id: d2
+    query: "动态化加载 · 热更新"
+    expect: "应命中 dynamic-introduction"
+
+  - id: d3
+    query: "ffi napi 调 C++ 接口"
+    expect: "应命中 ffi-napi-introduction"
+
+  - id: d4
+    query: "ArkTS 双向绑定 $$"
+    expect: "应命中 arkts-two-way-sync"
+
+  # ── E. 资源 / 国际化 ──
+  - id: e1
+    query: "怎么访问 resource 资源"
+    expect: "应命中 resource-categories-and-access"
+
+  # ── F. 负样本 ──
+  - id: f1
+    query: "今天天气怎么样 · 北京下雨吗"
+    expect: "无关 · 期望 top-1 score 极低"
+
+  - id: f2
+    query: "怎么炒西红柿炒鸡蛋"
+    expect: "无关 · 期望 top-1 score 极低"

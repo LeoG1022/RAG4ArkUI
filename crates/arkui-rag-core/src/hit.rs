@@ -11,11 +11,18 @@ use serde::{Deserialize, Serialize};
 pub struct Hit {
     /// 命中的 chunk（已扩展到父粒度时，content 是父 chunk）。
     pub chunk: Chunk,
-    /// 检索器给出的分数（含义因检索器不同）。
+    /// 检索器给出的分数（含义因检索器不同：vector=cosine / bm25=BM25 raw / hybrid=RRF）。
     pub score: f32,
     /// 哪个检索器召回（用于 RRF 融合 / 调试）。
     #[serde(default)]
     pub source: HitSource,
+    /// Round 52: 原始向量 cosine 相似度（HybridRetriever fuse 前保留 · 用于真实相似度展示 + 阈值过滤）。
+    /// None 表示这条 hit 不来自 vector 路径，或者来自老版 index 反序列化。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vector_score: Option<f32>,
+    /// Round 52: 原始 BM25 score（fuse 前保留）。None 表示不来自 BM25 路径。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bm25_score: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]

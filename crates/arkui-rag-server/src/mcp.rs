@@ -413,6 +413,8 @@ mod tests {
                     },
                     score: 1.0 - (i as f32 * 0.1),
                     source: HitSource::Hybrid,
+                    vector_score: None,
+                    bm25_score: None,
                 })
                 .collect())
         }

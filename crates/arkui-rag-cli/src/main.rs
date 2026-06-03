@@ -179,6 +179,10 @@ enum Cmd {
         /// Day 11：扩展到父 chunk 显示（检索小返回大 · 方案 §1.4）
         #[arg(long, default_value_t = false)]
         expand_parent: bool,
+        /// Round 52：vector cosine 相似度阈值（< 此值的 hit 被过滤 · 排除负样本）
+        /// BGE-M3 经验值：0.3 弱相关 · 0.5 中等相关 · 0.7+ 强相关
+        #[arg(long)]
+        min_vector_score: Option<f32>,
     },
     /// Corpus 管理
     Corpus {
@@ -435,6 +439,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             reranker_model_id,
             hyde,
             expand_parent,
+            min_vector_score,
         } => {
             cmd_query(
                 &text,
@@ -450,6 +455,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 &reranker_model_id,
                 hyde,
                 expand_parent,
+                min_vector_score,
             )
             .await
         }
@@ -842,6 +848,7 @@ async fn cmd_query(
     reranker_model_id: &str,
     hyde_kind: HydeKind,
     expand_parent: bool,
+    min_vector_score: Option<f32>,
 ) -> anyhow::Result<()> {
     // Memory backend 校验文件；LanceDB 校验目录
     match vector_kind {
@@ -915,6 +922,17 @@ async fn cmd_query(
         k
     };
     let hits = retriever.retrieve(&q, retrieve_k).await?;
+    // Round 52: vector cosine 阈值过滤（在 rerank 前）· 排除负样本
+    let (hits, filtered_out) = if let Some(thr) = min_vector_score {
+        let before = hits.len();
+        let kept: Vec<_> = hits
+            .into_iter()
+            .filter(|h| h.vector_score.map(|s| s >= thr).unwrap_or(false))
+            .collect();
+        (kept.clone(), before - kept.len())
+    } else {
+        (hits, 0)
+    };
     let hits = if let Some((rr, _id)) = reranker_opt {
         rr.rerank(text, hits, k).await?
     } else {
@@ -947,7 +965,7 @@ async fn cmd_query(
     };
 
     println!(
-        "✅ Top-{} hits (embedder={} · bm25={} · rerank={} · hyde={}{})",
+        "✅ Top-{} hits (embedder={} · bm25={} · rerank={} · hyde={}{}{})",
         hits.len(),
         query_model_id,
         bm25_name,
@@ -957,6 +975,11 @@ async fn cmd_query(
             " · expand-parent=on"
         } else {
             ""
+        },
+        if let Some(thr) = min_vector_score {
+            format!(" · min-vector-score={:.2}（过滤掉 {} 条）", thr, filtered_out)
+        } else {
+            String::new()
         }
     );
     println!();
@@ -971,7 +994,22 @@ async fn cmd_query(
             .line_range
             .map(|(a, b)| format!("L{}-{}", a, b))
             .unwrap_or_else(|| "L?".to_string());
-        println!("─── [{}] score={:.4} ──────────────────", i + 1, h.score);
+        // Round 52: 显示 RRF 融合 score + 原始 vector cosine + 原始 BM25 raw
+        let vec_s = h
+            .vector_score
+            .map(|s| format!("{:.4}", s))
+            .unwrap_or_else(|| "—".to_string());
+        let bm_s = h
+            .bm25_score
+            .map(|s| format!("{:.4}", s))
+            .unwrap_or_else(|| "—".to_string());
+        println!(
+            "─── [{}] rrf={:.4}  vector={}  bm25={} ──",
+            i + 1,
+            h.score,
+            vec_s,
+            bm_s
+        );
         println!("  source : {} {}", citation.source, lines);
         println!("  heading: {}", head);
         let preview: String = h.chunk.content.chars().take(200).collect();

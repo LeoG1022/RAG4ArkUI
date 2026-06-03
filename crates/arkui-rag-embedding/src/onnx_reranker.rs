@@ -108,6 +108,8 @@ mod tests {
             },
             score,
             source: HitSource::Hybrid,
+            vector_score: None,
+            bm25_score: None,
         };
 
         let hits = vec![
