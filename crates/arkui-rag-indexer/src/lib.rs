@@ -77,7 +77,21 @@ impl Indexer {
                 continue;
             }
 
-            let content = tokio::fs::read_to_string(&path).await?;
+            // Round 54: 容错读 · 非 UTF-8 文件（如 GBK 编码）lossy 替换坏字节为 U+FFFD
+            // 防止 1 个坏文件让整轮 3 小时 build 死掉
+            let bytes = tokio::fs::read(&path).await?;
+            let content = match std::str::from_utf8(&bytes) {
+                Ok(s) => s.to_string(),
+                Err(e) => {
+                    tracing::warn!(
+                        "{} 非 UTF-8 (pos {}): {} · 用 from_utf8_lossy 兜底（坏字节替换为 U+FFFD）",
+                        path.display(),
+                        e.valid_up_to(),
+                        e
+                    );
+                    String::from_utf8_lossy(&bytes).into_owned()
+                }
+            };
             let rel = path
                 .strip_prefix(source)
                 .unwrap_or(&path)
