@@ -199,6 +199,14 @@ impl VectorStore for InMemoryVectorStore {
     async fn len(&self) -> Result<usize> {
         Ok(self.entries.read().unwrap().len())
     }
+
+    /// Round 55: checkpoint persist · 调既有 save_to 写 index.json
+    async fn persist_checkpoint(&self, path: Option<&std::path::Path>) -> Result<()> {
+        if let Some(p) = path {
+            self.save_to(p).await?;
+        }
+        Ok(())
+    }
 }
 
 #[async_trait]

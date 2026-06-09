@@ -50,13 +50,24 @@ impl Indexer {
         self
     }
 
-    /// 索引一个目录。返回统计信息。
-    ///
-    /// 行为：
-    /// 1. 递归遍历 `source`（跳过 `_index/`、隐藏目录、`.gitkeep`）
-    /// 2. 按扩展名走 `ChunkerDispatcher`，未注册的 lang 计入 skipped
-    /// 3. 批量 embed → upsert vector + bm25
+    /// 索引一个目录。返回统计信息。无 checkpoint（兼容老路径）。
     pub async fn index_directory(&self, source: &Path) -> Result<IndexStats> {
+        self.index_directory_with_checkpoint(source, 0, None).await
+    }
+
+    /// Round 55: 索引一个目录 · 支持中途 checkpoint persist
+    ///
+    /// - `checkpoint_every_files = 0` 关 checkpoint（同 index_directory）
+    /// - `checkpoint_every_files > 0` 每处理 N files 持久化一次
+    /// - `persist_path` 传给 `VectorStore::persist_checkpoint`（InMemoryVectorStore 写 index.json）
+    ///
+    /// 设计：长 build（数小时）死掉时不丢失全部进度 · 重启可从 checkpoint 接续（需上层逻辑）
+    pub async fn index_directory_with_checkpoint(
+        &self,
+        source: &Path,
+        checkpoint_every_files: usize,
+        persist_path: Option<&Path>,
+    ) -> Result<IndexStats> {
         let start = Instant::now();
         let mut stats = IndexStats {
             files: 0,
@@ -68,6 +79,7 @@ impl Indexer {
 
         let files = walk_corpus(source);
         let mut buffered_chunks: Vec<Chunk> = Vec::new();
+        let mut files_since_checkpoint = 0usize;
 
         for path in files {
             let lang = ChunkerDispatcher::detect_lang(&path);
@@ -78,13 +90,12 @@ impl Indexer {
             }
 
             // Round 54: 容错读 · 非 UTF-8 文件（如 GBK 编码）lossy 替换坏字节为 U+FFFD
-            // 防止 1 个坏文件让整轮 3 小时 build 死掉
             let bytes = tokio::fs::read(&path).await?;
             let content = match std::str::from_utf8(&bytes) {
                 Ok(s) => s.to_string(),
                 Err(e) => {
                     tracing::warn!(
-                        "{} 非 UTF-8 (pos {}): {} · 用 from_utf8_lossy 兜底（坏字节替换为 U+FFFD）",
+                        "{} 非 UTF-8 (pos {}): {} · 用 from_utf8_lossy 兜底",
                         path.display(),
                         e.valid_up_to(),
                         e
@@ -113,11 +124,32 @@ impl Indexer {
             }
             stats.files += 1;
             stats.chunks += chunks.len();
+            files_since_checkpoint += 1;
             buffered_chunks.extend(chunks);
 
             while buffered_chunks.len() >= self.batch_size {
                 let drained: Vec<Chunk> = buffered_chunks.drain(..self.batch_size).collect();
                 self.flush_batch(&drained).await?;
+            }
+
+            // Round 55: checkpoint 持久化（每 N files · 0 = off）
+            if checkpoint_every_files > 0 && files_since_checkpoint >= checkpoint_every_files {
+                // 先 flush buffer 让所有已收 chunk 进入 store
+                if !buffered_chunks.is_empty() {
+                    let drained: Vec<Chunk> = std::mem::take(&mut buffered_chunks);
+                    self.flush_batch(&drained).await?;
+                }
+                match self.vector.persist_checkpoint(persist_path).await {
+                    Ok(_) => tracing::info!(
+                        "✅ checkpoint · files={} chunks={} persisted to {:?}",
+                        stats.files, stats.chunks, persist_path
+                    ),
+                    Err(e) => tracing::warn!(
+                        "⚠️ checkpoint 失败（继续 build）: {} · files={} chunks={}",
+                        e, stats.files, stats.chunks
+                    ),
+                }
+                files_since_checkpoint = 0;
             }
         }
 

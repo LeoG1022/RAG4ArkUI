@@ -37,6 +37,13 @@ pub trait VectorStore: Send + Sync {
     async fn is_empty(&self) -> Result<bool> {
         Ok(self.len().await? == 0)
     }
+    /// Round 55: checkpoint persist · 中途持久化避免长 build 死掉清零
+    /// - InMemoryVectorStore: 写 index.json（path 为 Some）
+    /// - LanceVectorStore: no-op（upsert 已实时落盘 · path 忽略）
+    /// 默认实现 no-op · 兼容所有现有实现
+    async fn persist_checkpoint(&self, _path: Option<&std::path::Path>) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// BM25 倒排索引后端。Tantivy 适配是 Week 3 backlog；

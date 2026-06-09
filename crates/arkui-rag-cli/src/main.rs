@@ -140,6 +140,10 @@ enum Cmd {
         /// 向量后端：memory（JSON 持久化）/ lancedb（嵌入式向量库，需 --features lancedb · Day 9）
         #[arg(long, value_enum, default_value_t = VectorKind::Memory)]
         vector: VectorKind,
+        /// Round 55: 每处理 N files 持久化一次 vector index（默认 20 · 0=关闭）
+        /// 长 build 死掉时不丢全部进度
+        #[arg(long, default_value_t = 20)]
+        checkpoint_every_files: usize,
     },
     /// 检索一次并打印 Top-K 命中
     Query {
@@ -412,6 +416,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             dim,
             bm25,
             vector,
+            checkpoint_every_files,
         } => {
             cmd_index(
                 &source,
@@ -422,6 +427,7 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 dim,
                 bm25,
                 vector,
+                checkpoint_every_files,
             )
             .await
         }
@@ -793,6 +799,7 @@ async fn cmd_index(
     mock_dim: usize,
     bm25_kind: Bm25Kind,
     vector_kind: VectorKind,
+    checkpoint_every_files: usize,
 ) -> anyhow::Result<()> {
     if !source.exists() {
         anyhow::bail!("源目录不存在：{}", source.display());
@@ -808,7 +815,21 @@ async fn cmd_index(
     let dispatcher = build_dispatcher();
 
     let indexer = Indexer::new(dispatcher, embedder, vector_backend.as_store(), bm25);
-    let stats = indexer.index_directory(source).await?;
+    // Round 55: 每 N files persist 一次 index.json · 长 build 死了不丢全部
+    if checkpoint_every_files > 0 {
+        eprintln!(
+            "  📝 checkpoint 启用：每 {} files 持久化一次到 {}",
+            checkpoint_every_files,
+            index_path.display()
+        );
+    }
+    let stats = indexer
+        .index_directory_with_checkpoint(
+            source,
+            checkpoint_every_files,
+            Some(index_path),
+        )
+        .await?;
     vector_backend.persist(index_path).await?;
 
     println!("✅ 索引完成");
